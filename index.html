@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="en" >
+<head>
+  <meta charset="UTF-8">
+  <title>Marmaradestinasyonlar.12.7</title>
+  
+
+</head>
+<body>
+<!-- partial:index.partial.html -->
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Marmara Haritası - Tam Kod (Kısa Örnek Veri)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <style>
+    html, body {
+      height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; overflow: hidden;
+    }
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0; right: 0;
+      z-index: 1;
+      transition: top 0.3s ease, bottom 0.3s ease;
+    }
+    #filter-panel, #location-panel {
+      position: absolute;
+      left: 0; right: 0;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      padding: 15px;
+      box-sizing: border-box;
+      z-index: 1100;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 15px;
+      transform: translateY(-100%);
+      transition: transform 0.3s ease;
+    }
+    #filter-panel {
+      top: 0;
+      height: 140px;
+      overflow-y: auto;
+      justify-content: flex-start;
+    }
+    #filter-panel.open {
+      transform: translateY(0);
+    }
+    #location-panel {
+      bottom: 0;
+      height: 180px;
+      flex-direction: column;
+      overflow-y: auto;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    #location-panel.open {
+      transform: translateY(0);
+    }
+    #places-list {
+      flex: 1;
+      overflow-y: auto;
+      width: 100%;
+      border-top: 1px solid #ddd;
+      padding-top: 8px;
+      font-size: 13px;
+      margin-top: 0;
+    }
+    .place-item {
+      border-bottom: 1px solid #eee;
+      padding: 6px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .place-name {
+      font-weight: 600;
+      flex: 1;
+      margin-right: 8px;
+      font-size: 13px;
+    }
+    .distance {
+      font-size: 11px;
+      color: #666;
+      margin-right: 8px;
+      white-space: nowrap;
+    }
+    .route-button, .google-maps-button {
+      background-color: #28a745;
+      border: none;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-left: 5px;
+      white-space: nowrap;
+    }
+    .route-button:hover {
+      background-color: #1e7e34;
+    }
+    .google-maps-button {
+      background-color: #4285F4;
+    }
+    .google-maps-button:hover {
+      background-color: #3367D6;
+    }
+    #route-panel {
+      position: absolute;
+      bottom: 180px;
+      right: 10px;
+      width: 320px;
+      max-height: 40%;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      overflow-y: auto;
+      z-index: 1200;
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 6px;
+      display: none;
+    }
+    #route-panel.open {
+      display: block;
+    }
+    #route-panel h3 {
+      margin-top: 0;
+    }
+    #hamburger-left, #hamburger-right {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1300;
+      font-size: 32px;
+      cursor: pointer;
+      background: white;
+      border-radius: 4px;
+      width: 40px;
+      height: 40px;
+      line-height: 40px;
+      text-align: center;
+      box-shadow: 0 0 5px rgba(0,0,0,0.3);
+      user-select: none;
+    }
+    #hamburger-left {
+      left: 10px;
+    }
+    #hamburger-right {
+      right: 10px;
+    }
+    #filter-panel label, #filter-panel select, #filter-panel button {
+      font-size: 14px;
+    }
+    #filter-panel label {
+      font-weight: bold;
+      min-width: 70px;
+    }
+    #filter-panel select, #filter-panel button {
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      min-width: 150px;
+    }
+    #filter-panel button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      min-width: 160px;
+    }
+    #filter-panel button:hover {
+      background-color: #0056b3;
+    }
+    #location-panel button {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 5px;
+      font-size: 13px;
+    }
+    #location-panel button:hover {
+      background-color: #0056b3;
+    }
+    #info-icon {
+      position: fixed;
+      bottom: 200px;
+      right: 20px;
+      background-color: rgba(255, 255, 255, 0.9);
+      border: 1px solid #ccc;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 1400;
+      font-weight: bold;
+      font-size: 24px;
+      user-select: none;
+    }
+    #info-icon:hover {
+      background-color: rgba(255, 255, 255, 1);
+    }
+  </style>
+</head>
+<body>
+  <div id="hamburger-left" title="Filtre Panelini Aç/Kapa" role="button" tabindex="0" aria-pressed="false" aria-label="Filtre panelini aç veya kapa">☰</div>
+  <div id="hamburger-right" title="Konum Panelini Aç/Kapa" role="button" tabindex="0" aria-pressed="false" aria-label="Konum panelini aç veya kapa">☰</div>
+
+  <div id="filter-panel" aria-label="Filtre Paneli" role="region" aria-hidden="true">
+    <label for="city-filter">İl Seç:</label>
+    <select id="city-filter" aria-controls="map">
+      <option value="ALL">Tüm İller</option>
+      <option value="İSTANBUL">İSTANBUL</option>
+      <option value="EDİRNE">EDİRNE</option>
+      <option value="KIRKLARELİ">KIRKLARELİ</option>
+      <option value="TEKİRDAĞ">TEKİRDAĞ</option>
+      <option value="ÇANAKKALE">ÇANAKKALE</option>
+      <option value="BALIKESİR">BALIKESİR</option>
+      <option value="BURSA">BURSA</option>
+      <option value="YALOVA">YALOVA</option>
+      <option value="KOCAELİ">KOCAELİ</option>
+      <option value="SAKARYA">SAKARYA</option>
+      <option value="BİLECİK">BİLECİK</option>
+    </select>
+
+    <label for="layer-filter">Kategori Seç:</label>
+    <select id="layer-filter" aria-controls="map">
+      <option value="ALL">Tüm Katmanlar</option>
+      <option value="PARK">Yeşil Alanlar</option>
+      <option value="BEACH">Plajlar</option>
+      <option value="SITE">Tarihi Yerler</option>
+      <option value="HOTEL">Oteller</option>
+    </select>
+
+    <button id="location-button-left" aria-label="Anlık konumumu göster">Anlık Konumumu Göster</button>
+    <button id="clear-route-button" aria-label="Rota temizle">Rota Temizle</button>
+  </div>
+
+  <div id="location-panel" aria-label="Konum ve Turistik Yerler Paneli" role="region" aria-hidden="true">
+    <button id="location-button-right" aria-label="Konumumu göster">Konumumu Göster</button>
+    <button id="mark-location-button" aria-label="Konum işaretle">Konum İşaretle</button>
+    <div id="places-list" aria-live="polite" aria-relevant="additions"></div>
+  </div>
+
+  <div id="route-panel" aria-label="Rota Bilgileri" role="region" aria-hidden="true">
+    <h3>Rota Bilgileri</h3>
+    <div id="route-details"></div>
+    <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end;">
+      <button id="open-google-maps-route" style="padding:5px 10px;cursor:pointer;background:#4285F4;color:#fff;border:none;border-radius:4px;">Google Haritalar'da Aç</button>
+      <button id="close-route" style="padding:5px 10px;">Rota Panelini Kapat</button>
+    </div>
+  </div>
+
+  <div id="map" role="application" aria-label="Harita"></div>
+
+  <div id="info-icon" title="Metni sesli oku" role="button" tabindex="0" aria-label="Metni sesli oku">İ</div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script>
+    const map = L.map('map').setView([40.65, 29.27], 7);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+      maxZoom: 19
+    }).addTo(map);
+
+    const greenSpacesLayer = L.layerGroup().addTo(map);
+    const beachesLayer = L.layerGroup().addTo(map);
+    const historicalSitesLayer = L.layerGroup().addTo(map);
+    const hotelsLayer = L.layerGroup().addTo(map);
+
+    const greenSpacesMarkers = [];
+    const beachesMarkers = [];
+    const historicalMarkers = [];
+    const hotelsMarkers = [];
+
+    // Örnek konumlar (her kategoriden 5'er)
+    const parks = [
+      { coords: [40.973822553266200, 28.783344683967600], city: "İSTANBUL", name: "FLORYA ATATÜRK DENİZ KÖŞKÜ" },
+{ coords: [41.110609287791400, 29.204447267036800], city: "İSTANBUL", name: "POLONEZKÖY TABİAT PARKI" },
+{ coords: [41.079210346182200, 29.067327767034900], city: "İSTANBUL", name: "KÜÇÜKSU MİLLET PARKI" },
+{ coords: [41.048681279836800, 29.016024076622900], city: "İSTANBUL", name: "YILDIZ PARKI" },
+{ coords: [41.016841368128400, 28.986509482576700], city: "İSTANBUL", name: "SARAYBURNU PARKI" },
+{ coords: [41.038057478875200, 29.038534467032500], city: "İSTANBUL", name: "NAKKAŞTEPE MİLLET BAHÇESİ" },
+{ coords: [41.040036060069400, 29.035626952433700], city: "İSTANBUL", name: "KUZGUNCUK PARKI" },
+{ coords: [41.044668258286000, 28.992557933010100], city: "İSTANBUL", name: "MAÇKA DEMOKRASİ PARKI" },
+{ coords: [41.074402453593200, 29.058733394453900], city: "İSTANBUL", name: "KANDİLLİ PARKI" },
+{ coords: [41.073989963886900, 29.058846047233800], city: "İSTANBUL", name: "CEMİLE SULTAN KORUSU" },
+{ coords: [41.032154191746700, 29.026848394015200], city: "İSTANBUL", name: "FETHİ PAŞA KORUSU" },
+{ coords: [41.047160232947300, 29.014060031039800], city: "İSTANBUL", name: "YILDIZ KORUSU" },
+{ coords: [41.089477357499300, 29.073413067035500], city: "İSTANBUL", name: "OTAĞTEPE FATİH KORUSU" },
+{ coords: [41.104661398257200, 29.075483732545100], city: "İSTANBUL", name: "HİDİVKASRI KORUSU" },
+{ coords: [41.106795614581200, 29.075869970647600], city: "İSTANBUL", name: "ÇUBUKLU SAHİLİ YÜRÜYÜŞ PARKURU" },
+{ coords: [41.123674365598100, 29.099260058638900], city: "İSTANBUL", name: "SULTANİYE PARKI" },
+{ coords: [41.133679048614300, 29.100075450196300], city: "İSTANBUL", name: "BEYKOZ KORUSU" },
+{ coords: [41.168570587469100, 29.083662817760000], city: "İSTANBUL", name: "ANADOLU KAVAĞI SAHİL PARKI" },
+{ coords: [41.177761660133800, 29.616200923977300], city: "İSTANBUL", name: "ŞİLE FENERİ" },
+{ coords: [41.177321892002000, 29.608980918349200], city: "İSTANBUL", name: "ÇOCUK PARKI (ŞİLE)" },
+{ coords: [41.179712146823700, 29.623507762364900], city: "İSTANBUL", name: "AĞLAYANKAYA BURNU" },
+{ coords: [41.177548000916800, 29.623679423743800], city: "İSTANBUL", name: "AĞLAYANKAYA PİKNİK ALANI" },
+{ coords: [41.174673129313000, 29.625374579836600], city: "İSTANBUL", name: "AĞLAYANKAYA MANZARA SEYİR NOKTASI" },
+{ coords: [41.174866944815900, 29.629601741264600], city: "İSTANBUL", name: "AĞLAYANKAYALAR ŞİLE" },
+{ coords: [41.140471864736800, 29.966036582488200], city: "İSTANBUL", name: "CENNET HAVUZU" },
+{ coords: [41.137074091779100, 29.590600631456400], city: "İSTANBUL", name: "SAKLIGÖL" },
+{ coords: [41.068610507933600, 28.778041186826700], city: "İSTANBUL", name: "AYAZMA MİLLET BAHÇESİ" },
+{ coords: [41.039049095946800, 29.033415334303900], city: "İSTANBUL", name: "ABDULLAHAĞA PARKI" },
+{ coords: [41.057178282855700, 29.033579156927200], city: "İSTANBUL", name: "HALİDE HANIM KORUSU" },
+{ coords: [41.068491820884800, 28.692253523639000], city: "İSTANBUL", name: "BAHÇEŞEHİR GÖLET PARKI" },
+{ coords: [41.119525153796100, 28.777222367037300], city: "İSTANBUL", name: "BAŞAKŞEHİR MİLLET BAHÇESİ" },
+{ coords: [40.976941450275000, 28.596714858230000], city: "İSTANBUL", name: "GÜRPINAR SAHİL" },
+{ coords: [40.977070554241400, 28.597677097273100], city: "İSTANBUL", name: "GÜRPINAR SAHİL PİRİ REİS PARKI" },
+{ coords: [41.006628622245600, 28.541598529517100], city: "İSTANBUL", name: "MİMAROBA ATATÜRK PARKI" },
+{ coords: [41.001036222249100, 28.538347213789800], city: "İSTANBUL", name: "BÜYÜK ATATÜRK PARKI" },
+{ coords: [40.994598035211200, 28.537418124216100], city: "İSTANBUL", name: "BARIŞ MANÇO PARKI" },
+{ coords: [41.090002990416000, 28.926661270868900], city: "İSTANBUL", name: "İBB BARIŞ MANÇO PARKI" },
+{ coords: [41.244617571324700, 29.090107667044500], city: "İSTANBUL", name: "MARMARACIK MİLLİ PARKI" },
+{ coords: [40.940200085815500, 29.107974090568900], city: "İSTANBUL", name: "İBB ORHANGAZİ ŞEHİR PARKI" },
+{ coords: [40.969045049948900, 29.036072882297600], city: "İSTANBUL", name: "FENERBAHÇE PARKI" },
+{ coords: [40.875495489015000, 29.222621175732500], city: "İSTANBUL", name: "PENDİK SAHİLİ" },
+{ coords: [40.903541586121700, 29.142568669179800], city: "İSTANBUL", name: "DRAGOS MUAMMER YELTEN KORUSU" },
+{ coords: [40.936994499328200, 29.111059325326100], city: "İSTANBUL", name: "İDEALTEPE SAHİL PARKI" },
+{ coords: [41.018844718217800, 29.013161977276700], city: "İSTANBUL", name: "İBB DOĞANCILAR PARKI" },
+{ coords: [41.035622811244200, 29.030031829665700], city: "İSTANBUL", name: "KUZGUNCUK EVLERİ" },
+{ coords: [41.040075736051200, 29.035660021684600], city: "İSTANBUL", name: "İBB KUZGUNCUK PARKI" },
+{ coords: [41.061399408648700, 29.038106524033100], city: "İSTANBUL", name: "İBB KURUÇEŞME PARKI" },
+{ coords: [41.087455367067700, 29.050549507965000], city: "İSTANBUL", name: "İBB DUATEPE PARKI" },
+{ coords: [41.097177537462700, 29.052242758094500], city: "İSTANBUL", name: "İBB JAPON BAHÇESİ PARKI" },
+{ coords: [41.107151262083600, 29.057778066163600], city: "İSTANBUL", name: "EMİRGAN SAHİL" },
+{ coords: [41.114462058647200, 29.055132290219200], city: "İSTANBUL", name: "İSTİNYE YÜRÜYÜŞ ALANI" },
+{ coords: [41.150146272791000, 29.043802345866300], city: "İSTANBUL", name: "KİREÇBURNU SAHİL" },
+{ coords: [41.018248206693800, 28.923260987609800], city: "İSTANBUL", name: "İSTANBUL KARA SURLARI MİLLET BAHÇESİ" },
+{ coords: [41.033504770877300, 28.940353338267200], city: "İSTANBUL", name: "TEKFUR SARAYI PARKI" },
+
+{ coords: [41.030612680443700, 28.951686711159200], city: "İSTANBUL", name: "İBB HALİÇ ŞAİR NEDİM PARKI" },
+{ coords: [41.056857004455800, 28.942804627155600], city: "İSTANBUL", name: "EYÜP SAHİL PARKI" },
+{ coords: [41.062228174962300, 28.948128637766100], city: "İSTANBUL", name: "İBB NİLÜFER PARKI" },
+{ coords: [41.064363514827300, 28.949873605291000], city: "İSTANBUL", name: "İBB KAĞITHANE MESİRE ALANI" },
+{ coords: [41.084139328261600, 28.952978633430100], city: "İSTANBUL", name: "ÇOBANÇEŞME ÇOCUK KÖYÜ" },
+{ coords: [41.108541421577200, 28.912004383115700], city: "İSTANBUL", name: "SULTANGAZİ PARKI" },
+{ coords: [41.113361488129800, 28.897059395873100], city: "İSTANBUL", name: "MİMAR SİNAN KENT ORMANI" },
+{ coords: [41.162131951083300, 28.885357015988700], city: "İSTANBUL", name: "KEMERBURGAZ KENT ORMANI" },
+{ coords: [41.134598518690100, 29.032373140895700], city: "İSTANBUL", name: "ATATÜRK KENT ORMANI" },
+{ coords: [41.168944828476900, 28.945253315486200], city: "İSTANBUL", name: "FATİH ÇEŞMESİ TABİAT PARKI" },
+{ coords: [41.180025983512100, 28.960364035137800], city: "İSTANBUL", name: "BELGRAD ORMANI YÜRÜYÜŞ PARKURU" },
+{ coords: [41.190070258391500, 28.876466868116700], city: "İSTANBUL", name: "GÖKTÜRK GÖLETİ TABİAT PARKI" },
+{ coords: [41.197928038771200, 28.920960576450000], city: "İSTANBUL", name: "AYVAT BENDİ TABİAT PARKI" },
+{ coords: [41.197741408451200, 28.920807246610200], city: "İSTANBUL", name: "KURT KEMERİ MESİRE ALANI" },
+{ coords: [41.171365662811300, 28.957609440185100], city: "İSTANBUL", name: "KİRAZLIBENT PİKNİK ALANI" }, { coords: [41.188377958666900, 28.969518346988600], city: "İSTANBUL", name: "NEŞETSUYU TABİAT PARKI" },
+{ coords: [41.189489128522800, 28.986939102641000], city: "İSTANBUL", name: "BENTLER TABİAT PARKI" },
+{ coords: [41.194871620038000, 28.988766225305900], city: "İSTANBUL", name: "VALİDE SULTAN GÖLETİ YÜRÜYÜŞ PARKURU" },
+{ coords: [41.205274443215900, 28.960961724714700], city: "İSTANBUL", name: "KÖMÜRCÜ BENDİ MİLLİ PARKI" },
+{ coords: [41.029187917874200, 28.949478831500700], city: "İSTANBUL", name: "FENER RUM ERKEK LİSESİ" },
+{ coords: [40.848957740016800, 29.123261595857900], city: "İSTANBUL", name: "BÜYÜKADA MİLLİ PARKI" },
+{ coords: [40.860722632352100, 29.111199440164400], city: "İSTANBUL", name: "DİLBURNU TABİAT PARKI" },
+{ coords: [41.007219225089800, 28.978241823405900], city: "İSTANBUL", name: "SULTAN AHMET PARKI" },
+{ coords: [40.975102917799800, 28.879559035518100], city: "İSTANBUL", name: "BAKIRKÖY SAHİL PARKI" },
+{ coords: [40.986263054797800, 28.912155117716400], city: "İSTANBUL", name: "ZEYTİNBURNU SAHİL" },
+{ coords: [40.68490755, 30.12684445], city: "KOCAELİ", name: "MAŞUKİYE ŞELALESİ" },
+{ coords: [40.64124968, 30.02516402], city: "KOCAELİ", name: "SOĞUKDERE KANYONU YÜRÜYÜŞ PARKURU" },
+{ coords: [40.65087715, 30.05904851], city: "KOCAELİ", name: "SUADİYE TABİAT PARKI" },
+{ coords: [40.64634523, 30.11689209], city: "KOCAELİ", name: "KUZUYAYLA TABİAT PARKI" },
+{ coords: [40.6676445, 29.97687603], city: "KOCAELİ", name: "YUVACIK BARAJI YÜRÜYÜŞ PARKURU" },
+{ coords: [40.63703326, 30.02551194], city: "KOCAELİ", name: "SERİNDERE KANYONU" },
+{ coords: [40.662764, 30.15322033], city: "KOCAELİ", name: "AYRI GEZEGEN CAM TERAS" },
+{ coords: [40.67408885, 29.96939847], city: "KOCAELİ", name: "YUVACIK BARAJI" },
+{ coords: [40.75977844, 29.90525723], city: "KOCAELİ", name: "SEKA PARK" },
+{ coords: [40.75930201, 29.89816912], city: "KOCAELİ", name: "UÇURTMA TEPESİ" },
+{ coords: [41.18598377, 30.2248454], city: "KOCAELİ", name: "PEMBE KAYALIKLAR" },
+{ coords: [40.79006421, 29.34679959], city: "KOCAELİ", name: "BALYANOZ PARKI" },
+{ coords: [40.79214361, 29.34162573], city: "KOCAELİ", name: "BAYRAMOĞLU SAHİL PARKI" },
+{ coords: [41.17244698, 30.22104565], city: "KOCAELİ", name: "KAPRİ KOYU BAHÇESİ" },
+{ coords: [41.15894139, 30.19153765], city: "KOCAELİ", name: "KERPE KAYALIKLARI" },
+{ coords: [40.83322221, 29.51681345], city: "KOCAELİ", name: "BALLIKAYALAR TABİAT PARKI" },
+{ coords: [40.60058704, 29.93506521], city: "KOCAELİ", name: "AYTEPE" },
+{ coords: [40.7171168, 30.15877821], city: "KOCAELİ", name: "SEKA PARK PİKNİK ALANI" },
+{ coords: [40.71803348, 30.15855376], city: "KOCAELİ", name: "SEKA KAMP" },
+{ coords: [40.71647889, 30.14830011], city: "KOCAELİ", name: "SAPANCA GÖLÜ" },
+{ coords: [40.73245396, 30.16265609], city: "KOCAELİ", name: "ORMANYA" },
+{ coords: [40.81396541, 29.34308383], city: "KOCAELİ", name: "HÜNKAR ÇEŞMESİ" },
+{ coords: [40.80694292, 29.98911376], city: "KOCAELİ", name: "GÖLKAYPARK" },
+{ coords: [40.76039091, 29.92698488], city: "KOCAELİ", name: "NAZMİ OĞUZ PARKI" },
+{ coords: [40.75941041, 29.93610334], city: "KOCAELİ", name: "KOCAELİ FUARI GÖLÜ" },
+{ coords: [40.76533162, 29.92084393], city: "KOCAELİ", name: "SELİM SIRRI PAŞA KONAĞI" },
+{ coords: [40.71692975, 29.92068853], city: "KOCAELİ", name: "BAŞİSKELE SAHİL" },
+{ coords: [41.19230009, 30.25944926], city: "KOCAELİ", name: "KANDIRA CEBECİ" },
+{ coords: [41.2033915, 30.26293372], city: "KOCAELİ", name: "CEBECİ SAKLI PLAJ" },
+{ coords: [41.21589392, 30.25967324], city: "KOCAELİ", name: "KEFKEN ADASI" },
+{ coords: [40.74663269, 29.79912158], city: "KOCAELİ", name: "SAHİL YÜRÜYÜŞ VE PİKNİK ALANI" },
+{ coords: [40.82754698, 29.91927199], city: "KOCAELİ", name: "KOCAELİ KENT ORMANI" },
+{ coords: [41.16167224, 30.22489402], city: "KOCAELİ", name: "KUMCAĞIZ HALK PLAJI" },
+{ coords: [41.1656088, 30.23006947], city: "KOCAELİ", name: "KEFKEN MESİRE ALANI" },
+{ coords: [41.16977918, 30.22609247], city: "KOCAELİ", name: "KEFKEN PLAJI" },
+{ coords: [41.17347036, 30.22219988], city: "KOCAELİ", name: "KAPRİ PLAJI" },
+{ coords: [40.72277395, 29.83489324], city: "KOCAELİ", name: "KAVAKLI SAHİL" },
+{ coords: [40.69520337, 29.61715743], city: "KOCAELİ", name: "KARAMÜRSEL SAHİL" },
+{ coords: [40.72972272, 29.94122033], city: "KOCAELİ", name: "İZMİT SAHİLİ" },
+{ coords: [41.13410265, 30.01990069], city: "KOCAELİ", name: "BAĞIRGANLI PLAJ" },
+{ coords: [41.13807996, 30.02294963], city: "KOCAELİ", name: "KAYALIKLAR" },
+{ coords: [40.77038965, 29.73892703], city: "KOCAELİ", name: "YARIMCA SAHİL PARKI" },
+{ coords: [40.77157322, 29.73484422], city: "KOCAELİ", name: "MUHSİN YAZICIOĞLU PİKNİK ALANI" },
+{ coords: [40.75496498, 29.38731388], city: "KOCAELİ", name: "SEVGİ PARKI" },
+{ coords: [40.64278854, 29.94160259], city: "KOCAELİ", name: "KARAKAYA ŞELALESİ" },
+{ coords: [40.76326195, 29.86092058], city: "KOCAELİ", name: "EKOPARK" },
+{ coords: [40.76378868, 29.86380696], city: "KOCAELİ", name: "ŞİRİNTEPE ÇAMLIK PARK" },
+{ coords: [41.02601637, 28.94963448], city: "İSTANBUL", name: "ÇUKURBOSTAN PARKI" },
+{ coords: [41.12935798, 29.11182065], city: "İSTANBUL", name: "KARLITEPE BEYKOZ" },
+{ coords: [41.13602374, 29.97407248], city: "KOCAELİ", name: "DİRİLİŞ KOYU" },
+{ coords: [41.13904354, 29.96177269], city: "KOCAELİ", name: "SARDALA KOYU" },
+{ coords: [41.13936674, 29.84182431], city: "İSTANBUL", name: "AĞVA SAHİL" },
+{ coords: [40.962222, 29.06222759], city: "İSTANBUL", name: "CADDEBOSTAN SAHİL" },
+{ coords: [40.9800319, 29.03784223], city: "İSTANBUL", name: "KALAMIŞ ATATÜRK PARKI" },
+{ coords: [40.98201924, 29.03306774], city: "İSTANBUL", name: "İBB KURBAĞALIDERE PARKI" },
+{ coords: [40.98005798, 29.02695644], city: "İSTANBUL", name: "MODA SAHİL PARKI VE YÜRÜYÜŞ YOLU" },
+{ coords: [40.92334513, 29.12404728], city: "İSTANBUL", name: "MALTEPE SAHİL PARKI" },
+{ coords: [40.95376078, 29.08132994], city: "İSTANBUL", name: "SUADİYE PARKI" },
+{ coords: [40.96984326, 29.04685446], city: "İSTANBUL", name: "FENERBAHÇE DALYAN SAHİLİ" },
+{ coords: [40.9669491, 29.0420897], city: "İSTANBUL", name: "FENERBAHÇE ORDUEVİ PİKNİK ALANI" },
+{ coords: [41.07607612, 29.04373612], city: "İSTANBUL", name: "İBB BEBEK PARKI" },
+{ coords: [41.19238933, 29.07387834], city: "İSTANBUL", name: "MİLLİ PARKLAR KUŞ GÖZLEM KULESİ" },
+{ coords: [41.04084386, 28.94304729], city: "İSTANBUL", name: "HALİÇ PARKI (AYVANSARAY PARK İÇİ YOLU)" },
+{ coords: [41.05513403, 28.94801554], city: "İSTANBUL", name: "HALİÇ PARKI (SÜTLÜCE)" },
+{ coords: [41.07101598, 28.94355302], city: "İSTANBUL", name: "İBB SİLAHTARAĞA GENÇLİK PARKI" },
+{ coords: [41.07504283, 28.96665312], city: "İSTANBUL", name: "KAĞITHANE BELEDİYESİ HASBAHÇE MESİRE ALANI" },
+{ coords: [41.11113411, 28.9129108], city: "İSTANBUL", name: "HACI BEKTAŞ-İ VELİ KENT ORMANI" },
+{ coords: [41.11169186, 28.91427336], city: "İSTANBUL", name: "ALİBEY BARAJI GÖZETLEME KULESİ" },
+{ coords: [41.12210832, 28.89892547], city: "İSTANBUL", name: "GÜZELCE KEMERİ" },
+{ coords: [41.37799492, 28.29568547], city: "İSTANBUL", name: "KARAMANDERE PİKNİK ALANI" },
+{ coords: [41.52456541, 28.21922632], city: "İSTANBUL", name: "ÇİLİNGOZ TABİAT PARKI" },
+{ coords: [41.30312874, 28.22116516], city: "İSTANBUL", name: "DANAMANDIRA TABİAT PARKI" },
+{ coords: [41.10036607, 29.39989074], city: "İSTANBUL", name: "AVCIKORU TABİAT PARKI" },
+{ coords: [41.03791828, 29.1839511], city: "İSTANBUL", name: "İBB RAHMİ DEMİR KENT ORMANI" },
+{ coords: [41.02979827, 29.19139033], city: "İSTANBUL", name: "ÇEKMEKÖY DOĞA PARKI" },
+{ coords: [41.00539707, 29.34882227], city: "İSTANBUL", name: "ÖMERLİ BARAJI KAMP ALANI" },
+{ coords: [40.97555165, 28.85912547], city: "İSTANBUL", name: "BARUTHANE MİLLET PARKI" },
+{ coords: [41.05768513, 28.87895393], city: "İSTANBUL", name: "ESENLER 15 TEMMUZ MİLLET BAHÇESİ" },
+{ coords: [41.09359402, 28.6486996], city: "İSTANBUL", name: "HOŞDERE MİLLET BAHÇESİ" },
+{ coords: [40.99630308, 28.89165777], city: "İSTANBUL", name: "ÇIRPICI MİLLET BAHÇESİ" },
+{ coords: [41.10261195, 28.76530364], city: "İSTANBUL", name: "KAYAŞEHİR MİLLET BAHÇESİ" },
+{ coords: [41.02509729, 28.78331049], city: "İSTANBUL", name: "HALKALI MİLLET BAHÇESİ" },
+{ coords: [41.03890182, 29.11391747], city: "İSTANBUL", name: "ÜMRANİYE MİLLET BAHÇESİ" },
+{ coords: [41.01471815, 28.95580321], city: "İSTANBUL", name: "SARAÇHANE PARKI" },
+{ coords: [41.01563893, 28.95428068], city: "İSTANBUL", name: "İBB FATİH ANIT PARKI" },
+{ coords: [41.11792348, 30.55451443], city: "SAKARYA", name: "ACARLAR LONGOZU" },
+{ coords: [40.60339813, 30.3679315], city: "SAKARYA", name: "DOĞANÇAY ŞELALESİ" },
+{ coords: [41.0099205, 30.78104984], city: "SAKARYA", name: "MADEN DERESİ" },
+{ coords: [40.50054756, 30.58413513], city: "SAKARYA", name: "KARAGÖZ YAYLASI" },
+{ coords: [40.49452762, 30.67683973], city: "SAKARYA", name: "SULTANPINAR YAYLASI" },
+{ coords: [40.66935072, 30.76951847], city: "SAKARYA", name: "ÇAMLICA GÖLÜ" },
+{ coords: [40.64614323, 30.74689306], city: "SAKARYA", name: "KEREMALİ YAYLASI" },
+{ coords: [40.65084912, 30.75584816], city: "SAKARYA", name: "KEREMALİ TÜRBESİ" },
+{ coords: [40.77216767, 30.38866809], city: "SAKARYA", name: "KENT PARK" },
+{ coords: [40.51848279, 30.62399409], city: "SAKARYA", name: "ACELLE YAYLASI" }, { coords: [40.51657285, 30.61725533], city: "SAKARYA", name: "ACELLE YAYLA GÖLETİ" },
+{ coords: [40.52516579, 30.86090981], city: "SAKARYA", name: "DAVLUMBAZ YAYLASI" },
+{ coords: [40.5270312, 30.84644251], city: "SAKARYA", name: "DOKUZCUN YAYLASI" },
+{ coords: [40.65789196, 30.82803977], city: "SAKARYA", name: "ÇİĞDEM YAYLASI" },
+{ coords: [40.73587153, 30.31904005], city: "SAKARYA", name: "SERDİVAN GÖLPARK" },
+{ coords: [40.61047064, 30.17594652], city: "SAKARYA", name: "SOĞUCAK YAYLASI" },
+{ coords: [40.66300842, 30.89843595], city: "SAKARYA", name: "DİKMEN TEPESİ" },
+{ coords: [40.66793134, 30.9116262], city: "SAKARYA", name: "DİKMEN YAYLASI" },
+{ coords: [40.82697139, 30.762571], city: "SAKARYA", name: "SELMAN DEDE MESİRE ALANI" },
+{ coords: [40.56947375, 30.00648096], city: "SAKARYA", name: "İNÖNÜ YAYLASI" },
+{ coords: [40.83303232, 30.46820164], city: "SAKARYA", name: "POYRAZLAR GÖLÜ" },
+{ coords: [41.03482903, 30.56431284], city: "SAKARYA", name: "GÖLKENT MESİRE ALANI" },
+{ coords: [40.77676666, 30.38663063], city: "SAKARYA", name: "SAKARYA MİLLET BAHÇESİ" },
+{ coords: [40.86001438, 30.31000413], city: "SAKARYA", name: "AYÇİÇEĞİ BİSİKLET VADİSİ MESİRE ALANI" },
+{ coords: [40.98451794, 30.31743792], city: "SAKARYA", name: "ŞEYHLER DERESİ" },
+{ coords: [40.99759869, 30.32954834], city: "SAKARYA", name: "OKÇULAR BARAJI" },
+{ coords: [40.5271822, 30.56512019], city: "SAKARYA", name: "YANIK YAYLASI" },
+{ coords: [40.87782164, 30.43524966], city: "SAKARYA", name: "AKGÖL MESİRE VE PİKNİK ALANI" },
+{ coords: [40.62228221, 30.65251987], city: "SAKARYA", name: "KUZULUK TABİAT PARKI" },
+{ coords: [41.14209414, 30.44545318], city: "SAKARYA", name: "SAKARYA BOTANİK BAHÇESİ" },
+{ coords: [41.1755626, 30.37619332], city: "SAKARYA", name: "KARABOĞAZ SAHİLİ" },
+{ coords: [41.07882289, 30.83832145], city: "SAKARYA", name: "KOCAALİ SAHİLİ" },
+{ coords: [41.06995283, 30.9624806], city: "SAKARYA", name: "MELENAĞZI" },
+{ coords: [40.70708458, 30.32216212], city: "SAKARYA", name: "SAKARYA İL ORMANI TABİAT PARKI" },
+{ coords: [40.70805664, 30.32614644], city: "SAKARYA", name: "İL ORMAN MESİRE ALANI" },
+{ coords: [40.70430722, 30.31648333], city: "SAKARYA", name: "SAKARYA MİLLİ PARKI" },
+{ coords: [40.70522109, 30.20038956], city: "SAKARYA", name: "KIRKPINAR SAHİLİ YÜRÜYÜŞ YOLU" },
+{ coords: [40.70554687, 30.19851407], city: "SAKARYA", name: "SAPANCA PORTAKAL ÇİÇEĞİ DOĞA PARKI" },
+{ coords: [40.70450351, 30.21216966], city: "SAKARYA", name: "KIRKPINAR SAHİLİ" },
+{ coords: [40.69685701, 30.27003352], city: "SAKARYA", name: "SAPANCA GÖLÜ YÜRÜYÜŞ YOLU" },
+{ coords: [40.71414426, 30.41314815], city: "SAKARYA", name: "GÖLYA TABİAT PARKI" },
+{ coords: [40.74004519, 30.41766722], city: "SAKARYA", name: "SAKARYA PARK" },
+{ coords: [40.83306847, 30.46819433], city: "SAKARYA", name: "POYRAZLAR GÖLÜ TABİAT PARKI" },
+{ coords: [40.68491042, 30.12687495], city: "SAKARYA", name: "MAŞUKİYE ŞELALESİ" },
+{ coords: [40.69497083, 30.12777068], city: "SAKARYA", name: "MAŞUKİYE MESİRE ALANI" },
+{ coords: [40.68176965, 30.16067646], city: "SAKARYA", name: "ÇATALKAYA VADİSİ MESİRE ALANI" },
+{ coords: [40.69878347, 30.17016494], city: "SAKARYA", name: "MAŞUKİYE PARK" },
+{ coords: [40.7485643, 29.80539884], city: "KOCAELİ", name: "HARİKALAR SAHİLİ" },
+{ coords: [40.18376975, 29.06308241], city: "BURSA", name: "GAZİ ORHAN PARKI" },
+{ coords: [40.18664617, 29.05716388], city: "BURSA", name: "TOPHANE PARKI" },
+{ coords: [40.18138972, 29.05416571], city: "BURSA", name: "TARİHİ PINARBAŞI PARKI" },
+{ coords: [40.18113106, 29.08019106], city: "BURSA", name: "EMİR SULTAN PARKI" },
+{ coords: [40.18557465, 29.0741143], city: "BURSA", name: "KAMBERLER PARKI" },
+{ coords: [40.20980763, 29.00460391], city: "BURSA", name: "HÜDAVENDİGAR KENT PARKI" },
+{ coords: [40.20179439, 29.00033354], city: "BURSA", name: "MİHRAPLI KENT PARK" },
+{ coords: [40.19469902, 29.04467273], city: "BURSA", name: "REŞAT OYAL KÜLTÜR PARKI" },
+{ coords: [40.19872116, 29.05419281], city: "BURSA", name: "MERİNOS KÜLTÜR PARKI" },
+{ coords: [40.24021373, 28.98721821], city: "BURSA", name: "HAMİTLER KÜLTÜR PARKI" },
+{ coords: [40.24160869, 28.98373824], city: "BURSA", name: "HAMİTLER MESİRE ALANI" },
+{ coords: [40.11231837, 29.07398023], city: "BURSA", name: "ULUDAĞ MİLLİ PARKI" },
+{ coords: [40.21814546, 29.04068107], city: "BURSA", name: "SOĞANLI BOTANİK PARKI" },
+{ coords: [40.21863764, 29.04042733], city: "BURSA", name: "BURSA BOTANİK PARKI" },
+{ coords: [40.22068763, 29.03803287], city: "BURSA", name: "BOTANİK PARK" },
+{ coords: [40.21811434, 29.04731153], city: "BURSA", name: "BURSA HAYVANAT BAHÇESİ" },
+{ coords: [40.21989862, 29.03939361], city: "BURSA", name: "GÖLET" },
+{ coords: [40.19367775, 29.04842019], city: "BURSA", name: "BURSA MİLLET BAHÇESİ" },
+{ coords: [40.41382912, 29.70540281], city: "BURSA", name: "GÖL KENARI PİKNİK ALANI" },
+{ coords: [40.40167867, 29.69575047], city: "BURSA", name: "İZNİK GÖLÜ KAMP ALANI" },
+{ coords: [40.48065455, 29.56015486], city: "BURSA", name: "BOYALICA YÜRÜYÜŞ YOLU" },
+{ coords: [40.4326678, 29.71329272], city: "BURSA", name: "İZNİK GÖLÜ" },
+{ coords: [40.1735381, 28.97408045], city: "BURSA", name: "ÇAMLIK PİKNİK ALANI" },
+{ coords: [40.17318989, 28.97441132], city: "BURSA", name: "EMİR ÖZTÜRK PİKNİK ALANI" },
+{ coords: [39.90173497, 28.38544311], city: "BURSA", name: "SUUÇTU TABİAT PARKI VE ŞELALESİ" },
+{ coords: [40.1668644, 28.67782695], city: "BURSA", name: "GÖLYAZI SAHİL" },
+{ coords: [40.17017334, 28.68392731], city: "BURSA", name: "ZAMBAK TEPE" },
+{ coords: [40.1750082, 28.72499452], city: "BURSA", name: "AKÇALAR ULUBAT GÖLÜ" },
+{ coords: [40.17129866, 28.72378768], city: "BURSA", name: "AKÇALAR PİKNİK VE MESİRE ALANI" },
+{ coords: [40.39402848, 28.79605852], city: "BURSA", name: "TRİLYE SAHİL" },
+{ coords: [40.35640653, 28.92421826], city: "BURSA", name: "GÜZELYALI SAHİL" },
+{ coords: [40.36111365, 29.02359374], city: "BURSA", name: "KURŞUNLU BELEDİYESİ YUSUF GÜNEŞ PARKI" },
+{ coords: [40.47422233, 29.09235799], city: "BURSA", name: "KÜÇÜK KUMLA SAHİLİ" },
+{ coords: [40.4776899, 29.0827945], city: "BURSA", name: "BÜYÜK KUMLA PARKI" },
+{ coords: [40.11967783, 29.27447515], city: "BURSA", name: "ALAÇAM ŞELALESİ VE KANYONU" },
+{ coords: [40.14812765, 29.2257876], city: "BURSA", name: "SAİTABAT ŞELALESİ" },
+{ coords: [40.15321149, 29.20304281], city: "BURSA", name: "KÜREKLİDERE ŞELALESİ" },
+{ coords: [39.87034457, 28.90710784], city: "BURSA", name: "SADAĞ KANYONU VE TABİAT PARKI" },
+{ coords: [40.16183549, 29.93719934], city: "BİLECİK", name: "PELİTÖZÜ GÖLPARK" },
+{ coords: [40.15811693, 29.93839631], city: "BİLECİK", name: "BİLECİK MİLLET BAHÇESİ" },
+{ coords: [39.96098432, 29.78865988], city: "BİLECİK", name: "BOZCAARMUT GÖLETİ" },
+{ coords: [39.9619532, 29.78793745], city: "BİLECİK", name: "PİKNİK ALANI" },
+{ coords: [39.86347183, 29.98260993], city: "BİLECİK", name: "TÜRBİN PİKNİK ALANI" },
+{ coords: [40.02696718, 30.18043243], city: "BİLECİK", name: "100. YIL PARKI" },
+{ coords: [40.02520787, 30.18082974], city: "BİLECİK", name: "ERTUĞRULGAZİ ŞENLİKLERİ ALANI" },
+{ coords: [39.8538125, 29.72331854], city: "BİLECİK", name: "ÇİÇEKLİ YAYLA" },
+{ coords: [40.03093744, 29.85376351], city: "BİLECİK", name: "GÜNYURDU BARAJI" },
+{ coords: [41.823860121366800, 27.964921499416100], city: "KIRKLARELİ", name: "İĞNEADA HAMAM GÖLÜ" },
+{ coords: [41.636413016483700, 28.093652850883900], city: "KIRKLARELİ", name: "KIYIKÖY SEYİR TERASI" },
+{ coords: [40.57234492, 29.13990054], city: "YALOVA", name: "SUDÜŞEN ŞELALESİ" },
+{ coords: [40.58976438, 29.0311313], city: "YALOVA", name: "ERİKLİ ŞELALE KAMP ALANI" },
+{ coords: [40.58850967, 29.02630332], city: "YALOVA", name: "YALOVA KENT ORMANI" },
+{ coords: [40.58911259, 29.02902844], city: "YALOVA", name: "ERİKLİ YAYLASI PİKNİK ALANI" },
+{ coords: [40.58828969, 29.02511242], city: "YALOVA", name: "ERİKLİ YAYLASI" },
+{ coords: [40.55714109, 29.00629099], city: "YALOVA", name: "DELMECE YAYLASI" },
+{ coords: [40.54787179, 29.00541903], city: "YALOVA", name: "DELMECE YAYLASI TABİAT PARKI" },
+{ coords: [40.58151297, 28.98955427], city: "YALOVA", name: "KARLIK YAYLASI" },
+{ coords: [40.58920187, 29.01144107], city: "YALOVA", name: "BÜYÜK DİPSİZ GÖL" },
+{ coords: [40.58945062, 29.00766501], city: "YALOVA", name: "KÜÇÜK DİPSİZ GÖL" },
+{ coords: [40.58887216, 29.01134501], city: "YALOVA", name: "DİPSİZ GÖLLER TABİAT PARKI" },
+{ coords: [40.57554084, 29.1499766], city: "YALOVA", name: "HARMANKAYA TABİAT PARKI" },
+{ coords: [40.60946914, 29.1867509], city: "YALOVA", name: "AKSA HATIRA ORMANI" },  { "coords": [40.47804428, 28.88975839], "city": "YALOVA", "name": "FISTIKLI KÖYÜ PİKNİK ALANI" },
+    { "coords": [40.50923394, 28.83800186], "city": "YALOVA", "name": "İSKELE MEYDANI" },
+    { "coords": [40.52481653, 28.78853459], "city": "YALOVA", "name": "ARMUTLU GÖLETİ" },
+    { "coords": [40.53431051, 28.78165267], "city": "YALOVA", "name": "ARMUTLU FENERİ" },
+    { "coords": [40.65777109, 29.26860037], "city": "YALOVA", "name": "CEVDET AYDIN PARKI" },
+    { "coords": [40.6545579, 29.2722092], "city": "YALOVA", "name": "ABDULLAH BAŞTÜRK ÇOCUK PARKI" },
+    { "coords": [40.65793937, 29.25205946], "city": "YALOVA", "name": "17 AĞUSTOS PARKI" },
+    { "coords": [40.65767262, 29.26342873], "city": "YALOVA", "name": "YALOVA SAHİLİ" },
+    { "coords": [40.66502682, 29.30858657], "city": "YALOVA", "name": "YAŞAR OKUYAN PARKI" },
+    { "coords": [40.71420101, 29.51351364], "city": "YALOVA", "name": "HERSEK LAGÜNÜ" },
+    { "coords": [40.60341761, 29.17078546], "city": "YALOVA", "name": "PİKNİK ALANI" },
+    { "coords": [40.6060805, 29.18225726], "city": "YALOVA", "name": "TERMAL PARK" },
+    { "coords": [40.59895906, 29.31246381], "city": "YALOVA", "name": "İSTİHKAN TEPE PİKNİK ALANI" },
+    { "coords": [40.56727867, 29.34243704], "city": "YALOVA", "name": "HÖYÜK TEPE PİKNİK ALANI" },
+    { "coords": [40.67444793, 29.39531225], "city": "YALOVA", "name": "TAŞKÖPRÜ MESİRE ALANI" },
+    { "coords": [41.40636501, 27.35998688], "city": "KIRKLARELİ", "name": "GENÇLİK PARKI" },
+    { "coords": [41.40027759, 27.35174437], "city": "KIRKLARELİ", "name": "İNÖNÜ PARK" },
+    { "coords": [41.5896418, 28.1417224], "city": "KIRKLARELİ", "name": "ÇAMLIKÖY TABİAT PARKI" },
+    { "coords": [41.73901273, 27.22262958], "city": "KIRKLARELİ", "name": "YAYLA PARKI" },
+    { "coords": [41.71316912, 27.82529739], "city": "KIRKLARELİ", "name": "CEHENNEM ŞELALELERİ" },
+    { "coords": [41.73493375, 27.22509404], "city": "KIRKLARELİ", "name": "ŞEVKET DİNGİNLİOĞLU PARKI" },
+    { "coords": [41.73062527, 27.21405161], "city": "KIRKLARELİ", "name": "KIRKLARELİ MİLLET BAHÇESİ" },
+    { "coords": [41.74086674, 27.27394945], "city": "KIRKLARELİ", "name": "DEVLET SU İŞLERİ PİKNİK ALANI" },
+    { "coords": [41.2814402, 27.98234618], "city": "TEKİRDAĞ", "name": "NAİM SÜLEYMANOĞLU PARKI" },
+    { "coords": [41.6679302, 26.59065367], "city": "EDİRNE", "name": "BARIŞ PARKI" },
+    { "coords": [41.66219208, 26.54025252], "city": "EDİRNE", "name": "EDİRNE KENT ORMANI" },
+    { "coords": [41.15951762, 28.66338056], "city": "İSTANBUL", "name": "SAZLIBOSNA GÖLÜ" },
+    { "coords": [41.13566006, 28.76199759], "city": "İSTANBUL", "name": "ŞAMLAR TABİAT PARKI" },
+    { "coords": [40.75251055, 26.1674277], "city": "EDİRNE", "name": "GALA GÖLÜ MİLLİ PARKI" },
+    { "coords": [40.59375563, 26.12774687], "city": "EDİRNE", "name": "SULTANİÇE SAHİLİ" },
+    { "coords": [40.61113366, 26.56285033], "city": "EDİRNE", "name": "SAİT FAİK ABASIYANIK PARKI" },
+    { "coords": [40.63971461, 26.68585754], "city": "EDİRNE", "name": "SAZLIDERE SAHİLİ" },
+    { "coords": [40.89365913, 26.90518743], "city": "TEKİRDAĞ", "name": "BELEDİYE PARKI" },
+    { "coords": [40.97618315, 27.51247268], "city": "TEKİRDAĞ", "name": "ERTUĞRUL FIRKATEYNİ PARKI" },
+    { "coords": [41.35192921, 28.00541215], "city": "TEKİRDAĞ", "name": "KAZAK GÖLÜ MİLLİ PARKI" },
+    { "coords": [41.35181816, 28.00450279], "city": "TEKİRDAĞ", "name": "KAZAK GÖLETİ" },
+    { "coords": [41.13728194, 27.79927737], "city": "TEKİRDAĞ", "name": "ÇORLU HAYVANAT BAHÇESİ" },
+    { "coords": [40.9768731, 27.51980886], "city": "TEKİRDAĞ", "name": "TEKİRDAĞ SAHİL" },
+    { "coords": [40.97827265, 27.515003], "city": "TEKİRDAĞ", "name": "ZÜBEYDE HANIM PARKI" },
+    { "coords": [40.97805663, 27.5229825], "city": "TEKİRDAĞ", "name": "BARIŞ VE ÖZGÜRLÜK PARKI" },
+    { "coords": [40.98393623, 27.55343279], "city": "TEKİRDAĞ", "name": "SÜLEYMAN PAŞA PARKI" },
+    { "coords": [41.58966366, 28.14178578], "city": "TEKİRDAĞ", "name": "ÇAMLIKÖY /KASTRO TABİAT PARKI" },
+    { "coords": [41.53966013, 28.01290484], "city": "TEKİRDAĞ", "name": "LALADERE PİKNİK ALANI" },
+    { "coords": [40.97424595, 27.51059194], "city": "TEKİRDAĞ", "name": "SÜLEYMANPAŞA SEYİR PARKI" },
+    { "coords": [41.14413693, 27.80248052], "city": "TEKİRDAĞ", "name": "BÜYÜKŞEHİR BELEDİYE ÇORLU CUMHURİYET PARKI" },
+    { "coords": [41.14721518, 27.8034618], "city": "TEKİRDAĞ", "name": "CUMHURİYET PARKI" },
+    { "coords": [41.13888161, 27.79971781], "city": "TEKİRDAĞ", "name": "ÇORLU CUMHURİYET PARKI" },
+    { "coords": [41.13691217, 27.8840841], "city": "TEKİRDAĞ", "name": "GÖLBAŞI GENÇLİK PARKI" },
+    { "coords": [41.16241313, 27.79933468], "city": "TEKİRDAĞ", "name": "GAZİLER PARKI" },
+    { "coords": [41.15902348, 27.78157702], "city": "TEKİRDAĞ", "name": "İLHAN İREN PARKI" },
+    { "coords": [40.86694404, 27.45981962], "city": "TEKİRDAĞ", "name": "KUMBAĞ LİMANI" },
+    { "coords": [40.78333229, 27.26662373], "city": "TEKİRDAĞ", "name": "GANOS DAĞLARI / IŞIKLAR DAĞI" },
+    { "coords": [41.47554844, 27.97047944], "city": "TEKİRDAĞ", "name": "GÜNGÖRMEZ KANARA KANYONU" },
+    { "coords": [41.28087503, 28.00195286], "city": "TEKİRDAĞ", "name": "ÇERKEZKÖY KENT PARK" },
+    { "coords": [41.56682792, 28.12334021], "city": "TEKİRDAĞ", "name": "CENNET ŞELALESİ" },
+    { "coords": [41.59503101, 28.13309869], "city": "TEKİRDAĞ", "name": "KASTRO DERESİ" },
+    { "coords": [40.82190535, 27.3995674], "city": "TEKİRDAĞ", "name": "KARTALTEPE TABİAT PARKI" },
+    { "coords": [40.95696136, 27.49483643], "city": "TEKİRDAĞ", "name": "TEKİRDAĞ MİLLET BAHÇESİ" },
+    { "coords": [40.99020307, 27.58782857], "city": "TEKİRDAĞ", "name": "ATATÜRK ORMANI MESİRE YERİ" },
+    { "coords": [40.85634216, 27.37538186], "city": "TEKİRDAĞ", "name": "MERMER PİKNİK ALANI" },
+    { "coords": [41.15443534, 27.81613298], "city": "TEKİRDAĞ", "name": "ŞEHİT SEDAT UYSALCAN PARKI" },
+    { "coords": [40.11083193, 26.4018032], "city": "ÇANAKKALE", "name": "KEPEZ SAHİL PARKI" },
+    { "coords": [40.1428872, 26.39822936], "city": "ÇANAKKALE", "name": "DSİ SAHİL" },
+    { "coords": [40.14319389, 26.40232799], "city": "ÇANAKKALE", "name": "OSNABRUCK PARKI" },
+    { "coords": [40.15074859, 26.40651587], "city": "ÇANAKKALE", "name": "HALK BAHÇESİ" },
+    { "coords": [40.149906, 26.40471552], "city": "ÇANAKKALE", "name": "MUAMMER AKSOY PARKI" },
+    { "coords": [40.16337487, 26.4079644], "city": "ÇANAKKALE", "name": "ÖZGÜRLÜK PARKI" },
+    { "coords": [40.16198026, 26.40923668], "city": "ÇANAKKALE", "name": "MASAL PARKI" },
+    { "coords": [40.23863043, 26.54295586], "city": "ÇANAKKALE", "name": "KANGIRLI ALTI SAHİL" },
+    { "coords": [40.28056099, 26.57592685], "city": "ÇANAKKALE", "name": "UMURBEY SAHİL" },
+    { "coords": [40.34473869, 26.67692605], "city": "ÇANAKKALE", "name": "LAPSEKİ MİLLET BAHÇESİ" },
+    { "coords": [40.35458011, 26.69325414], "city": "ÇANAKKALE", "name": "LAPSEKİ DALYAN AÇIK PARK" },
+    { "coords": [40.42927903, 27.077538], "city": "ÇANAKKALE", "name": "UZUNDERE PİKNİK ALANI" },
+    { "coords": [40.44816041, 27.30969794], "city": "ÇANAKKALE", "name": "SÖĞÜTLÜYALI" },
+    { "coords": [40.40437775, 27.30963865], "city": "ÇANAKKALE", "name": "ALAATTİN ANAHTARCI PARKI" },
+    { "coords": [40.40385383, 26.6399386], "city": "ÇANAKKALE", "name": "M. NURİ ERER PİKNİK ALANI" },
+    { "coords": [40.18122078, 25.76785165], "city": "ÇANAKKALE", "name": "MARMAROS BÜYÜK ŞELALE" },  { "coords": [40.14564916, 26.4184853], "city": "ÇANAKKALE", "name": "ÇATALTEPELİLER PARKI" },
+    { "coords": [40.23917586, 27.26578311], "city": "ÇANAKKALE", "name": "ŞÜKRÜ KEMERLİ PARKI" },
+    { "coords": [40.22954474, 27.24566758], "city": "ÇANAKKALE", "name": "BİGA ŞEHİR PARKI" },
+    { "coords": [40.23376965, 27.24014282], "city": "ÇANAKKALE", "name": "ADAPARK" },
+    { "coords": [40.40977788, 26.68239938], "city": "ÇANAKKALE", "name": "DENİZ KUVVETLERİ KÜLTÜR PARKI" },
+    { "coords": [40.23194712, 28.04013069], "city": "BALIKESİR", "name": "KUŞ CENNETİ MİLLİ PARKI" },
+    { "coords": [39.28895325, 26.64321672], "city": "BALIKESİR", "name": "ŞEYTAN SOFRASI" },
+    { "coords": [39.69922225, 27.96448851], "city": "BALIKESİR", "name": "DEĞİRMEN BOĞAZI TABİAT PARKI" },
+    { "coords": [39.64483246, 26.91823591], "city": "BALIKESİR", "name": "SÜTÜVEN ŞELALESİ" },
+    { "coords": [39.64879903, 26.91689897], "city": "BALIKESİR", "name": "HASAN BOĞULDU GÖLETİ" },
+    { "coords": [39.64138516, 26.92107431], "city": "BALIKESİR", "name": "HASAN BOĞULDU PİKNİK ALANI" },
+    { "coords": [39.59757165, 28.62581394], "city": "BALIKESİR", "name": "SUÇIKTI MESİRE ALANI" },
+    { "coords": [39.6218699, 26.8802445], "city": "BALIKESİR", "name": "PINARBAŞI PİKNİK ALANI" },
+    { "coords": [39.33155367, 26.65827964], "city": "BALIKESİR", "name": "CUNDA SAHİLİ" },
+    { "coords": [39.33621473, 26.65919287], "city": "BALIKESİR", "name": "AŞIKLAR TEPESİ" },
+    { "coords": [39.33695476, 26.61515681], "city": "BALIKESİR", "name": "SEYİR TERASI" },
+    { "coords": [39.34053211, 26.70656567], "city": "BALIKESİR", "name": "FETHİ SEKİN PARKI" },
+    { "coords": [39.26866087, 26.64415613], "city": "BALIKESİR", "name": "SARIMSAKLI TABİAT PARKI" },
+    { "coords": [39.66355196, 26.94555133], "city": "BALIKESİR", "name": "KAZDAĞI MİLLİ PARKI" },
+    { "coords": [39.3260952, 26.70545341], "city": "BALIKESİR", "name": "CENNET TEPESİ" },
+    { "coords": [39.31655709, 26.69079114], "city": "BALIKESİR", "name": "AYVALIK SAHİLİ" },
+    { "coords": [39.58347415, 26.6511309], "city": "ÇANAKKALE", "name": "MIHLI ÇAYI ŞELALESİ" },
+    { "coords": [40.39088186, 27.79680959], "city": "BALIKESİR", "name": "KURBAĞLI SAHİL" },
+    { "coords": [40.35878922, 27.9703586], "city": "BALIKESİR", "name": "BANDIRMA SAHİLİ" },
+    { "coords": [40.51604269, 27.81522751], "city": "BALIKESİR", "name": "YOLSUZ KOY" }
+      // Diğer park verileri...
+    ];
+    const beaches = [
+      { "coords": [41.97633437, 28.02691059], "city": "KIRKLARELİ", "name": "BEĞENDİK PLAJI" },
+    { "coords": [41.88784938, 28.03022059], "city": "KIRKLARELİ", "name": "AŞIKLAR PLAJI" },
+    { "coords": [41.86966469, 27.98121848], "city": "KIRKLARELİ", "name": "İĞNEADA MERT GÖLÜ PLAJI" },
+    { "coords": [41.77140904, 28.01857777], "city": "KIRKLARELİ", "name": "PANAYIR İSKELESİ KOYU" },
+    { "coords": [41.63945147, 28.09330052], "city": "KIRKLARELİ", "name": "KIYIKÖY BELEDİYE PLAJI" },
+    { "coords": [41.61679898, 28.11461468], "city": "KIRKLARELİ", "name": "KORSAN KOYU" },
+    { "coords": [41.60377669, 28.12841722], "city": "KIRKLARELİ", "name": "İKİZ KOYLAR" },
+    { "coords": [41.5722421, 28.17541251], "city": "İSTANBUL", "name": "KORSAN KOYU" },
+    { "coords": [41.33547876, 28.70047876], "city": "İSTANBUL", "name": "KARABURUN PLAJI" },
+    { "coords": [41.32749551, 28.72113839], "city": "İSTANBUL", "name": "YENİKÖY PLAJI" },
+    { "coords": [41.2629668, 28.94127381], "city": "İSTANBUL", "name": "EYÜP SULTAN BELEDİYESİ ÇİFTALAN PLAJI" },
+    { "coords": [41.25259054, 28.97556876], "city": "İSTANBUL", "name": "KISIRKAYA PLAJI" },
+    { "coords": [40.97110063, 28.78849725], "city": "İSTANBUL", "name": "FLORYA GÜNEŞ PLAJI" },
+    { "coords": [40.97771659, 28.77408165], "city": "İSTANBUL", "name": "HAYLAYF PLAJI" },
+    { "coords": [40.98158404, 28.59881821], "city": "İSTANBUL", "name": "GÜRPINAR HALK PLAJI" },
+    { "coords": [41.01656359, 28.5891944], "city": "İSTANBUL", "name": "BÜYÜKÇEKMECE KUMSAL" },
+    { "coords": [41.22449844, 29.21712353], "city": "İSTANBUL", "name": "RİVA PLAJI" },
+    { "coords": [41.21497945, 29.15219604], "city": "İSTANBUL", "name": "ANADOLU FENERİ PLAJI" },
+    { "coords": [40.9633395, 29.05865765], "city": "İSTANBUL", "name": "CADDEBOSTAN PLAJI" },
+    { "coords": [40.95974239, 29.07143322], "city": "İSTANBUL", "name": "ERENKÖY HALK PLAJI" },
+    { "coords": [40.90655625, 29.04426694], "city": "İSTANBUL", "name": "KINAKIADA HALK PLAJI" },
+    { "coords": [40.8784379, 29.07022747], "city": "İSTANBUL", "name": "BURGAZADA HALK PLAJI" },
+    { "coords": [40.8557806, 29.27902703], "city": "İSTANBUL", "name": "GÜZELYALI PLAJI" },
+    { "coords": [41.23057271, 29.25725284], "city": "İSTANBUL", "name": "RİVA GELARA KOYU" },
+    { "coords": [41.22112456, 29.21005791], "city": "İSTANBUL", "name": "RİVA HALK PLAJI" },
+    { "coords": [41.2170935, 29.1620003], "city": "İSTANBUL", "name": "KABAKOZ" },
+    { "coords": [41.20471239, 29.13192582], "city": "İSTANBUL", "name": "POYRAZAKÖY PLAJI" },
+    { "coords": [41.20519891, 29.41713739], "city": "İSTANBUL", "name": "SAHİL KÖY HALK PLAJI" },
+    { "coords": [41.18673247, 29.49208264], "city": "İSTANBUL", "name": "SOFULAR KÖYÜ HALK PLAJI" },
+    { "coords": [41.17577153, 29.55211328], "city": "İSTANBUL", "name": "KUMBABA PLAJ" },
+    { "coords": [41.17115953, 29.59670841], "city": "İSTANBUL", "name": "AYAZMA PLAJI" },
+    { "coords": [41.17062347, 29.63647805], "city": "İSTANBUL", "name": "UZUNKUM PLAJI" },
+    { "coords": [41.16912488, 29.64398304], "city": "İSTANBUL", "name": "ŞİLE PLAJI" },
+    { "coords": [41.16541419, 29.65787901], "city": "İSTANBUL", "name": "KIRANDERE PLAJI" },
+    { "coords": [41.16160305, 29.67794987], "city": "İSTANBUL", "name": "SAKLI KOY" },
+    { "coords": [41.15903322, 29.70690437], "city": "İSTANBUL", "name": "KABAKOZ KÖYÜ PLAJI" },
+    { "coords": [41.15715726, 29.71775621], "city": "İSTANBUL", "name": "KOYAĞZI PLAJI" },
+    { "coords": [41.15661142, 29.72740786], "city": "İSTANBUL", "name": "AKÇAKESE HALK PLAJI" },
+    { "coords": [41.15716171, 29.75519354], "city": "İSTANBUL", "name": "İMRENLİ KÖY PLAJI" },
+    { "coords": [41.15645022, 29.77807942], "city": "İSTANBUL", "name": "KARACAKÖY PLAJI" },
+    { "coords": [41.13815958, 29.8487964], "city": "İSTANBUL", "name": "AĞVA PLAJI" },
+    { "coords": [41.1419856, 29.87267249], "city": "İSTANBUL", "name": "AĞVA KİLİMLİ KOYU" },
+    { "coords": [41.14216131, 29.90832338], "city": "İSTANBUL", "name": "KADIRGA KOYU" },
+    { "coords": [41.01354596, 27.98678608], "city": "TEKİRDAĞ", "name": "SULTANKÖY PLAJI" },
+    { "coords": [41.07783722, 28.23128583], "city": "İSTANBUL", "name": "SİLİVRİ PLAJI" },
+    { "coords": [40.99639646, 28.51827087], "city": "İSTANBUL", "name": "GÜZELCE PLAJI" },
+    { "coords": [40.95789708, 28.83656638], "city": "İSTANBUL", "name": "YEŞİLKÖY HALK PLAJI" },
+    { "coords": [41.13524576, 30.10081796], "city": "KOCAELİ", "name": "SEYREK PLAJI" },
+    { "coords": [41.13897488, 30.15053492], "city": "KOCAELİ", "name": "SARISU PLAJI" },
+    { "coords": [41.14561455, 30.18883999], "city": "KOCAELİ", "name": "ÖMERAĞZI KOYU" },
+    { "coords": [41.15623762, 30.1963077], "city": "KOCAELİ", "name": "KERPE PLAJI" },
+    { "coords": [41.15792398, 30.19486282], "city": "KOCAELİ", "name": "KERPE HALK PLAJI" },
+    { "coords": [41.16169927, 30.22484252], "city": "KOCAELİ", "name": "KUMCAĞIZ HALK PLAJI" },
+    { "coords": [41.16978629, 30.22636876], "city": "KOCAELİ", "name": "KEFKEN PLAJI" },
+    { "coords": [41.17343704, 30.22216331], "city": "KOCAELİ", "name": "KAPRİ PLAJI" },
+    { "coords": [41.17658418, 30.23311999], "city": "KOCAELİ", "name": "KOVANAĞZI HALK PLAJI" },
+    { "coords": [41.18835806, 30.25114889], "city": "KOCAELİ", "name": "CEBECİ PLAJI" },
+    { "coords": [41.20343909, 30.26287811], "city": "KOCAELİ", "name": "CEBECİ SAKLI PLAJ" },
+    { "coords": [41.19376827, 30.33432928], "city": "KOCAELİ", "name": "DİKİLİ PLAJI" },
+    { "coords": [41.18610531, 30.35142159], "city": "KOCAELİ", "name": "BABALI PLAJI" },
+    { "coords": [41.11033678, 30.69288642], "city": "SAKARYA", "name": "KARASU PLAJI" },
+    { "coords": [41.10659876, 30.7056115], "city": "SAKARYA", "name": "KARASU HALK PLAJI" },
+    { "coords": [41.07904567, 30.83724389], "city": "SAKARYA", "name": "KOCAALİ SAHİL" },
+    { "coords": [40.79039594, 29.33791893], "city": "KOCAELİ", "name": "BAYRAMOĞLU PLAJI" },
+    { "coords": [40.69551196, 29.62974716], "city": "KOCAELİ", "name": "HALK PLAJI" },
+    { "coords": [40.69823412, 29.65002741], "city": "KOCAELİ", "name": "KUMYALI PLAJI" },
+    { "coords": [40.39806912, 28.36523288], "city": "BURSA", "name": "MALKARA PLAJI" },
+    { "coords": [40.37199848, 28.58654904], "city": "BURSA", "name": "MESUDİYE HALK PLAJI" },
+    { "coords": [40.3704792, 28.5929179], "city": "BURSA", "name": "AYAZMA PLAJI" },
+    { "coords": [40.36436319, 28.63026296], "city": "BURSA", "name": "EGERCE PLAJI" },
+    { "coords": [40.38589607, 28.82635426], "city": "BURSA", "name": "KUMYAKA HALK PLAJI" },
+    { "coords": [40.38412259, 28.82867356], "city": "BURSA", "name": "KUMYAKA PLAJI" },
+    { "coords": [40.36037081, 28.91487124], "city": "BURSA", "name": "BURGAZ HALK PLAJI" },
+    { "coords": [40.35620799, 28.94165603], "city": "BURSA", "name": "BURGAZ ALTINKUM HALK PLAJI" },
+    { "coords": [40.35641029, 28.94683654], "city": "BURSA", "name": "PLAJ KUMLU" },
+    { "coords": [40.41728584, 29.09920175], "city": "BURSA", "name": "GEMSAZ PLAJI" },
+    { "coords": [40.47415236, 29.09232597], "city": "BURSA", "name": "KÜÇÜK KUMLA SAHİLİ" },
+    { "coords": [40.45709781, 28.97680194], "city": "YALOVA", "name": "ÇAMLIK PLAJI VE MESİRE ALANI" },
+    { "coords": [40.48598735, 28.87831376], "city": "YALOVA", "name": "FISTIKLI PLAJI" },
+    { "coords": [40.50622935, 28.84887425], "city": "YALOVA", "name": "ARMUTLU PLAJI" },
+    { "coords": [40.5090536, 28.83226176], "city": "YALOVA", "name": "İĞDE ALTI PLAJI" },
+    { "coords": [40.51473301, 28.79620676], "city": "YALOVA", "name": "TATİL KÖYÜ YANI HALK PLAJI" },
+    { "coords": [40.64516882, 29.09076688], "city": "YALOVA", "name": "ÇINARCIK PLAJI" },
+    { "coords": [40.73114992, 29.51711828], "city": "YALOVA", "name": "ALTINOVA HERSEK PLAJI" },
+    { "coords": [40.69460962, 29.54803756], "city": "YALOVA", "name": "KAYTAZDERE BELEDİYESİ HALK PLAJI" },
+    { "coords": [41.87580906, 27.9875652], "city": "KIRKLARELİ", "name": "İĞNE ADA PLAJI" },
+    { "coords": [40.63810664, 26.61103923], "city": "EDİRNE", "name": "GÖKÇETEPE TABİAT PARKI" },
+    { "coords": [40.63095414, 26.58990419], "city": "EDİRNE", "name": "GÖKÇE TEPE MİLLİ PARK" },
+    { "coords": [40.66719863, 26.06579904], "city": "EDİRNE", "name": "ALTINKUM SAHİLİ" },
+    { "coords": [40.66079781, 26.06441865], "city": "EDİRNE", "name": "ANTINKUM PLAJI" },
+    { "coords": [40.65709444, 26.06503963], "city": "EDİRNE", "name": "GAZİÖMERBEY PLAJI" },
+    { "coords": [40.59291002, 26.13734344], "city": "EDİRNE", "name": "SULTANİÇE SAHİL PLAJI" },
+    { "coords": [40.59162642, 26.14221935], "city": "EDİRNE", "name": "GÜLÇAVUŞ SAHİLİ PLAJI" },
+    { "coords": [40.59419655, 26.17439706], "city": "EDİRNE", "name": "GÜLÇAVUŞ KÖYÜ SAHİLİ" },  { "coords": [40.59773788, 26.21210391], "city": "EDİRNE", "name": "BÜYÜKEVREN KÖYÜ SAHİL" },
+    { "coords": [40.59769107, 26.24451409], "city": "EDİRNE", "name": "VAKIF PLAJI" },
+    { "coords": [40.59171135, 26.29105058], "city": "EDİRNE", "name": "ENEZ KARAİNCİRLİ KÖYÜ SAHİLİ" },
+    { "coords": [40.60719763, 26.38526117], "city": "EDİRNE", "name": "YAYLA SAHİLİ" },
+    { "coords": [40.60895426, 26.43423437], "city": "EDİRNE", "name": "DANİŞMENT TABİAT PARKI, KAMP ALANI VE PLAJ" },
+    { "coords": [40.60158863, 26.49955965], "city": "EDİRNE", "name": "MECİDİYE SAHİL" },
+    { "coords": [40.61520065, 26.46903696], "city": "EDİRNE", "name": "ERİKLİ PLAJI" },
+    { "coords": [40.69013592, 26.05754775], "city": "EDİRNE", "name": "ENEZ PIRLANTA PLAJI" },
+    { "coords": [40.9699125, 27.9577663], "city": "TEKİRDAĞ", "name": "MARMARA EREĞLİSİ PLAJ" },
+    { "coords": [40.87902703, 27.46076919], "city": "TEKİRDAĞ", "name": "KUMBAĞ HALK PLAJI" },
+    { "coords": [40.89652356, 27.46309786], "city": "TEKİRDAĞ", "name": "GÜNDAL PLAJ" },
+    { "coords": [40.97028388, 27.92156251], "city": "TEKİRDAĞ", "name": "DALLAS PLAJI" },
+    { "coords": [40.99235239, 27.83957315], "city": "TEKİRDAĞ", "name": "ATATÜRK PARKI PLAJI" },
+    { "coords": [40.98439914, 27.57648622], "city": "TEKİRDAĞ", "name": "DEĞİRMENALTI HALK PLAJI" },
+    { "coords": [40.94620249, 27.48994759], "city": "TEKİRDAĞ", "name": "ALTINOVA SAHİLİ" },
+    { "coords": [39.84373508, 26.14272949], "city": "ÇANAKKALE", "name": "KUMBURNU PLAJI" },
+    { "coords": [39.88383865, 26.15935388], "city": "ÇANAKKALE", "name": "KUMBURUN KÖYÜ AKÇANSA PLAJI" },
+    { "coords": [39.89467839, 26.1610881], "city": "ÇANAKKALE", "name": "BEŞİKİYE KUMSALI" },
+    { "coords": [39.92005757, 26.15655515], "city": "ÇANAKKALE", "name": "PAPAZ PLAJI" },
+    { "coords": [40.00800462, 26.20451398], "city": "ÇANAKKALE", "name": "KUMKALE ALTI PLAJ, KUMSAL" },
+    { "coords": [40.03789687, 26.33857841], "city": "ÇANAKKALE", "name": "ÇANAKKALE BELEDİYESİ GÜZELYALI HALK PLAJI" },
+    { "coords": [40.08782601, 26.36441733], "city": "ÇANAKKALE", "name": "ÇANAKKALE BELEDİYESİ DARDANOS HALK PLAJI" },
+    { "coords": [40.10338299, 26.37055286], "city": "ÇANAKKALE", "name": "KEPEZ HALK PLAJI" },
+    { "coords": [40.13204622, 26.40606663], "city": "ÇANAKKALE", "name": "YENİ KORDON PLAJ, SAHİL" },
+    { "coords": [40.39725013, 26.87516425], "city": "ÇANAKKALE", "name": "ŞEVKETİYE KÖYÜ" },
+    { "coords": [40.43455939, 27.18631011], "city": "ÇANAKKALE", "name": "AKSAZ PLAJI" },
+    { "coords": [40.43422587, 27.20425914], "city": "ÇANAKKALE", "name": "ŞAHMELEK PLAJI" },
+    { "coords": [40.54579554, 26.75044729], "city": "ÇANAKKALE", "name": "BOLAYIR PLAJI" },
+    { "coords": [40.50732716, 26.69546168], "city": "ÇANAKKALE", "name": "GÜNEYLİ PLAJI" },
+    { "coords": [40.5070075, 26.67108188], "city": "ÇANAKKALE", "name": "MAHMUTPAŞA KOYU PLAJI" },
+    { "coords": [40.50614045, 26.65865041], "city": "ÇANAKKALE", "name": "MAVİ SOROZ" },
+    { "coords": [40.43889501, 26.45375995], "city": "ÇANAKKALE", "name": "KARAAĞAÇ KOYU PLAJI" },
+    { "coords": [40.12837401, 25.94096183], "city": "ÇANAKKALE", "name": "KEFALOS PLAJI" },
+    { "coords": [40.10434539, 25.80917928], "city": "ÇANAKKALE", "name": "KAPIKAYA PLAJI" },
+    { "coords": [40.09941173, 25.78351977], "city": "ÇANAKKALE", "name": "LAZ KOYU PLAJI" },
+    { "coords": [40.0968549, 25.75521653], "city": "ÇANAKKALE", "name": "YUVALI PLAJI" },
+    { "coords": [40.11830974, 25.69918333], "city": "ÇANAKKALE", "name": "UĞURLU PLAJI" },
+    { "coords": [40.12422127, 25.672943], "city": "ÇANAKKALE", "name": "GİZLİ LİMAN" },
+    { "coords": [40.22471977, 25.9506863], "city": "ÇANAKKALE", "name": "KUZU LİMANI PLAJI" },
+    { "coords": [40.23425844, 25.90355376], "city": "ÇANAKKALE", "name": "YILDIZ KOYU PLAJI" },
+    { "coords": [39.46637744, 26.23544332], "city": "ÇANAKKALE", "name": "SİVRİCE KOYU" },
+    { "coords": [39.46634431, 26.20836458], "city": "ÇANAKKALE", "name": "SOKAK AĞZI PLAJI" },
+    { "coords": [39.46162276, 26.19666132], "city": "ÇANAKKALE", "name": "KARADİKEN KOYU" },
+    { "coords": [39.79143428, 26.06178786], "city": "ÇANAKKALE", "name": "AKVARYUM PLAJI" },
+    { "coords": [39.79141713, 26.06026651], "city": "ÇANAKKALE", "name": "AKVARYUM KOYU" },
+    { "coords": [39.79715908, 26.04478864], "city": "ÇANAKKALE", "name": "AYANA KOYU" },
+    { "coords": [39.80842009, 26.02147271], "city": "ÇANAKKALE", "name": "BEYLİK KOYU" },
+    { "coords": [39.81288535, 26.00758349], "city": "ÇANAKKALE", "name": "AYAZMA PLAJI" },
+    { "coords": [39.81838947, 26.0014162], "city": "ÇANAKKALE", "name": "SULUBAHÇE PLAJI" },
+    { "coords": [39.82279703, 25.99225189], "city": "ÇANAKKALE", "name": "HABBELE PLAJI" },
+    { "coords": [39.33553594, 26.61763739], "city": "BALIKESİR", "name": "ORTUNÇ KOYU" },
+    { "coords": [39.34410937, 26.69567351], "city": "BALIKESİR", "name": "BELEDİYE PLAJI" },
+    { "coords": [39.34104354, 26.7118815], "city": "BALIKESİR", "name": "AYVALIK İĞNELİ PLAJI" },
+    { "coords": [39.35312516, 26.65198031], "city": "BALIKESİR", "name": "ÇATALTEPE PLAJI" },
+    { "coords": [39.26781364, 26.65141428], "city": "BALIKESİR", "name": "SARIMSAKLI MİLLİ EĞİTİM PLAJI" },
+    { "coords": [40.40719194, 27.91906328], "city": "BALIKESİR", "name": "TATLISU HALK PLAJI" },
+    { "coords": [40.4065548, 27.78609638], "city": "BALIKESİR", "name": "ERDEK PLAJI" },
+    { "coords": [40.38000004, 27.877889], "city": "BALIKESİR", "name": "DÜZLER HALK PLAJI" },
+    { "coords": [40.44706982, 27.7537144], "city": "BALIKESİR", "name": "OCAKLAR HALK PLAJI" },
+    { "coords": [40.47572399, 27.68806715], "city": "BALIKESİR", "name": "NARLI PLAJI" },
+    { "coords": [40.51793102, 27.72940417], "city": "BALIKESİR", "name": "BÜYÜK OVA PLAJI" },
+    { "coords": [40.50646524, 27.79036658], "city": "BALIKESİR", "name": "TURAN KÖY PLAJI" },
+    { "coords": [40.51726037, 27.7472938], "city": "BALIKESİR", "name": "DOĞANLAR PLAJ" },
+    { "coords": [40.65689777, 27.6714284], "city": "BALIKESİR", "name": "ABROZ PLAJI" },
+    { "coords": [40.52923908, 27.50694826], "city": "BALIKESİR", "name": "AKVARYUM PLAJI" },
+    { "coords": [40.51665841, 27.71133239], "city": "BALIKESİR", "name": "KÜÇÜKOVA PLAJI" },
+    { "coords": [39.57110493, 26.94071713], "city": "BALIKESİR", "name": "ALTINKUM PLAJI" },
+    { "coords": [40.51372901, 27.8068275], "city": "BALIKESİR", "name": "MANASTIR KOYU GİZLİ PLAJ" },
+    { "coords": [39.49765843, 26.93305066], "city": "BALIKESİR", "name": "ÖREN HALK PLAJI" },
+    { "coords": [40.49043948, 27.4815082], "city": "BALIKESİR", "name": "BEYAZSARAY PLAJI" },
+    { "coords": [40.50380226, 27.4921764], "city": "BALIKESİR", "name": "AVŞA PLAJ" },
+    { "coords": [40.54577296, 27.48313318], "city": "BALIKESİR", "name": "KARABATAK KOYU" },
+    { "coords": [39.56425034, 26.7541244], "city": "BALIKESİR", "name": "ALTINOLUK SAHİL" },
+    { "coords": [39.47735536, 26.8594929], "city": "BALIKESİR", "name": "BADEM SAHİL" },
+    { "coords": [39.4295912, 26.83257184], "city": "BALIKESİR", "name": "KARAAĞAÇ SAHİL" },
+    { "coords": [39.43090074, 26.82851974], "city": "BALIKESİR", "name": "SIRATAŞLAR PLAJI" }
+      // Diğer plaj verileri...
+    ];
+    const sites = [
+      { coords: [41.03769267, 28.9963223], city: "İSTANBUL", name: "DOLMABAHÇE SAAT KULESİ" },
+    { coords: [41.01203877, 28.98121484], city: "İSTANBUL", name: "ÇİNİLİ KÖŞK MÜZESİ" },
+    { coords: [41.04817226, 28.98786374], city: "İSTANBUL", name: "ASKERİ MÜZE VE KÜLTÜR SİTESİ KOMUTANLIĞI" },
+    { coords: [41.02814395, 28.97447532], city: "İSTANBUL", name: "GALATA MEVLEVİHANESİ MÜZESİ" },
+    { coords: [41.02897987, 28.94624826], city: "İSTANBUL", name: "FETHİYE MÜZESİ" },
+    { coords: [41.01387767, 28.97954247], city: "İSTANBUL", name: "İSLAM BİLİM VE TEKNOLOJİ TARİHİ MÜZESİ" },
+    { coords: [40.97597247, 29.07068011], city: "İSTANBUL", name: "İSTANBUL OYUNCAK MÜZESİ" },
+    { coords: [41.04987876, 29.009855], city: "İSTANBUL", name: "YILDIZ SAAT KULESİ" },
+    { coords: [40.96423492, 28.82619271], city: "İSTANBUL", name: "HAVACILIK MÜZESİ" },
+    { coords: [41.01534151, 28.97650327], city: "İSTANBUL", name: "İSTANBUL DEMİRYOLU MÜZESİ" },
+    { coords: [40.9651118, 28.79895424], city: "İSTANBUL", name: "İSTANBUL AKVARYUM" },
+    { coords: [41.0415369, 29.00537072], city: "İSTANBUL", name: "İSTANBUL DENİZ MÜZESİ" },
+    { coords: [41.01597736, 28.955613], city: "İSTANBUL", name: "BOZDOĞAN KEMERİ" },
+    { coords: [41.01645797, 28.95553663], city: "İSTANBUL", name: "KARİKATÜR VE MİZAH MÜZESİ" },
+    { coords: [41.02713731, 28.98232905], city: "İSTANBUL", name: "TOPHANE KASRI" },
+    { coords: [41.05641485, 28.98710498], city: "İSTANBUL", name: "ATATÜRK MÜZESİ" },
+    { coords: [41.0380082, 28.95529119], city: "İSTANBUL", name: "AYNALIKAVAK KASRI" },
+    { coords: [41.01682267, 28.95973224], city: "İSTANBUL", name: "VEFA CAMİİ VE TÜRBESİ" },
+    { coords: [41.01986134, 29.0292653], city: "İSTANBUL", name: "ÇİNİLİ CAMİ" },
+    { coords: [41.02826016, 29.06917242], city: "İSTANBUL", name: "ÇAMLICA TEPESİ" },
+    { coords: [41.07921035, 29.06732777], city: "İSTANBUL", name: "KÜÇÜKSU MİLLET PARKI" },
+    { coords: [41.01421041, 28.98451392], city: "İSTANBUL", name: "BAĞDAT KÖŞKÜ" },
+    { coords: [41.01250226, 28.98337666], city: "İSTANBUL", name: "ADALET KULESİ" },
+    { coords: [41.03170121, 28.94965926], city: "İSTANBUL", name: "AZİZ STEPHEN KİLİSESİ" },
+    { coords: [41.02671247, 28.98293347], city: "İSTANBUL", name: "TOPHANE-İ AMİRE SANCAK KULESİ" },
+    { coords: [41.01478363, 28.9795903], city: "İSTANBUL", name: "2. ABDÜLHAMİD ÇEŞMESİ" },
+    { coords: [41.01380979, 28.98175686], city: "İSTANBUL", name: "GÜLHANE PARKI SARNICI" },
+    { coords: [41.04603289, 29.01736703], city: "İSTANBUL", name: "BEŞİKTAŞLI YAHYA EFENDİ TÜRBESİ" },
+    { coords: [41.03972309, 29.00261611], city: "İSTANBUL", name: "RESİM MÜZESİ" },
+    { coords: [41.03663986, 28.98778886], city: "İSTANBUL", name: "ATATÜRK KÜLTÜR MERKEZİ" },
+    { coords: [41.03694738, 28.98409814], city: "İSTANBUL", name: "TAKSİM CAMİİ" },
+    { coords: [41.06192049, 28.94314885], city: "İSTANBUL", name: "İSTANBUL DOLPHİNARİUM" },
+    { coords: [41.04565772, 28.89619025], city: "İSTANBUL", name: "SEA LIFE AKVARYUM" },
+    { coords: [41.13865479, 29.10261531], city: "İSTANBUL", name: "BEYKOZ CAM VE BİLLUR MÜZESİ" },
+    { coords: [41.13780233, 29.08136148], city: "İSTANBUL", name: "BEYKOZ MECİDİYE KASRI" },
+    { coords: [41.23779714, 29.11092917], city: "İSTANBUL", name: "RUMELİ FENERİ TOPÇU KALESİ" },
+    { coords: [41.03383039, 29.0315882], city: "İSTANBUL", name: "AHŞAP EVLER" },
+    { coords: [41.03643878, 28.9394823], city: "İSTANBUL", name: "EĞRİKAPI" },
+    { coords: [40.9999406, 28.92062422], city: "İSTANBUL", name: "BELGRAD KAPISI" },
+    { coords: [40.99398772, 28.92215634], city: "İSTANBUL", name: "YEDİKULE KAPISI" },
+    { coords: [40.99309258, 28.92261589], city: "İSTANBUL", name: "ALTIN KAPI" },
+    { coords: [41.01413385, 28.92212233], city: "İSTANBUL", name: "MEVLANAKAPI KAPISI" },
+    { coords: [41.02184879, 28.92636795], city: "İSTANBUL", name: "TARİHİ TOPKAPI SURLARI" },
+    { coords: [41.0302976, 28.93545429], city: "İSTANBUL", name: "EDİRNEKAPI SURLARI" },
+    { coords: [41.03020872, 28.93539049], city: "İSTANBUL", name: "CHARİSİUS KAPISI" },
+    { coords: [41.03350477, 28.94035334], city: "İSTANBUL", name: "TEKFUR SARAYI PARKI" },
+    { coords: [41.03376699, 28.94048797], city: "İSTANBUL", name: "TEKFUR SARAYI" },
+    { coords: [41.06996045, 28.96282047], city: "İSTANBUL", name: "SADABAD CAMİİ" },
+    { coords: [41.11890493, 28.90290802], city: "İSTANBUL", name: "SARISÜLEYMAN KEMERİ" },
+    { coords: [41.11807259, 28.90107227], city: "İSTANBUL", name: "KUMRULU KEMER" },
+    { coords: [41.13713118, 28.89351538], city: "İSTANBUL", name: "MAĞLOVA SU KEMERİ" },
+    { coords: [41.19117501, 28.98799229], city: "İSTANBUL", name: "VALİDE SULTAN BENDİ" },
+    { coords: [41.18979521, 28.98612605], city: "İSTANBUL", name: "SULTAN MAHMUT BENDİ" },
+    { coords: [41.18297753, 28.9933565], city: "İSTANBUL", name: "TOPUZLU BENDİ" },
+    { coords: [41.02676971, 29.01599222], city: "İSTANBUL", name: "MİHRİMAH SULTAN CAMİİ" },
+    { coords: [41.0259298, 29.01141266], city: "İSTANBUL", name: "ŞEMSİ AHMET PAŞA CAMİİ" },
+    { coords: [41.01309652, 28.96040947], city: "İSTANBUL", name: "KALENDERANE CAMİİ" },
+    { coords: [41.00966086, 29.01652982], city: "İSTANBUL", name: "BÜYÜK SELİMİYE CAMİİ" },
+    { coords: [41.04514475, 29.04570262], city: "İSTANBUL", name: "HAMİD-İ EVVEL CAMİİ" },
+    { coords: [41.02739083, 28.98313646], city: "İSTANBUL", name: "NUSRETİYE CAMİİ" },
+    { coords: [41.01103711, 28.97117534], city: "İSTANBUL", name: "MAHMUT PAŞA CAMİİ" },
+    { coords: [41.0149368, 28.94371986], city: "İSTANBUL", name: "FENARİ İSA CAMİİ" },
+    { coords: [41.04936462, 28.9942793], city: "İSTANBUL", name: "TEŞVİKİYE CAMİİ" },
+    { coords: [41.04564788, 29.00847485], city: "İSTANBUL", name: "ERTUĞRUL TEKKE CAMİİ" },
+    { coords: [41.01881442, 28.95324757], city: "İSTANBUL", name: "SANKİ YEDİM CAMİİ" },
+    { coords: [41.01001511, 28.95667014], city: "İSTANBUL", name: "LALELİ CAMİİ" },
+    { coords: [41.04467735, 28.93565723], city: "İSTANBUL", name: "ZAL MAHMUT PAŞA CAMİİ" },
+    { coords: [41.04581644, 29.00849978], city: "İSTANBUL", name: "SULTAN 2. ABDÜLHAMİD ÇEŞMESİ" },
+    { coords: [41.00721923, 28.97824182], city: "İSTANBUL", name: "SULTAN AHMET PARKI" },
+    { coords: [41.00237953, 28.97554067], city: "İSTANBUL", name: "BUKOLEON SARAYI" },
+    { coords: [41.0082318, 28.98117624], city: "İSTANBUL", name: "SULTAN 3. AHMET ÇEŞMESİ" },
+    { coords: [41.01385263, 28.95607863], city: "İSTANBUL", name: "AYŞE SULTAN ÇEŞMESİ" },
+    { coords: [41.00653153, 28.96931155], city: "İSTANBUL", name: "EMİN SİNAN CAMİİ ÇEŞMESİ" },
+    { coords: [41.01677793, 28.97053121], city: "İSTANBUL", name: "HATİCE SULTAN ÇEŞMESİ" },
+    { coords: [41.01757772, 28.96882291], city: "İSTANBUL", name: "RÜSTEM PAŞA CAMİİ" },
+    { coords: [40.76959235, 29.42746042], city: "KOCAELİ", name: "ESKİHİSAR ÇEŞMESİ" },
+    { coords: [40.76301323, 29.92059469], city: "KOCAELİ", name: "KASR-I HÜMAYUN SARAY MÜZESİ" },
+    { coords: [40.76283073, 29.91960048], city: "KOCAELİ", name: "SAAT KULESİ" },
+    { coords: [40.76334752, 29.9208353], city: "KOCAELİ", name: "İZMİT KÜLTÜR TEPESİ" },
+    { coords: [40.76705564, 29.92073818], city: "KOCAELİ", name: "SÜLEYMAN PAŞA HAMAMI" },
+    { coords: [40.70477717, 29.78890914], city: "KOCAELİ", name: "SULTAN BABA TÜRBESİ" },
+    { coords: [40.76263373, 29.93117284], city: "KOCAELİ", name: "PERTEV MEHMET PAŞA (YENİ CUMA) CAMİİ" },
+    { coords: [40.7621037, 29.91758184], city: "KOCAELİ", name: "KOCAELİ ARKEOLOJİ MÜZESİ" },
+    { coords: [40.76266, 29.92562098], city: "KOCAELİ", name: "FEVZİYE CAMİİ" },
+    { coords: [40.78364474, 29.61532012], city: "KOCAELİ", name: "HEREKE MERKEZ CAMİİ" },
+    { coords: [40.7228899, 29.83521454], city: "KOCAELİ", name: "YARHİSAR GEMİ MÜZESİ" },
+    { coords: [40.7626933, 29.91931789], city: "KOCAELİ", name: "ATATÜRK ANITI" },
+    { coords: [40.76096372, 29.91721229], city: "KOCAELİ", name: "HIZIR REİS DENİZALTI MÜZESİ" },
+    { coords: [40.76851832, 29.9196273], city: "KOCAELİ", name: "ORHAN CAMİİ" },
+    { coords: [40.70033266, 30.1127158], city: "KOCAELİ", name: "HİKMETİYE CAMİİ" },  { coords: [40.79807897, 29.43776792], city: "KOCAELİ", name: "SULTAN ORHAN CAMİİ" },
+    { coords: [40.69088889, 29.61627526], city: "KOCAELİ", name: "KARAMÜRSEL BEY MEZARI" },
+    { coords: [40.69797303, 29.87772623], city: "KOCAELİ", name: "YAZLIK ILICASI" },
+    { coords: [41.13993584, 30.09852464], city: "KOCAELİ", name: "SEYREK KALESİ" },
+    { coords: [40.60537665, 29.5260804], city: "KOCAELİ", name: "VALİDE SULTAN KÖPRÜSÜ" },
+    { coords: [40.91702486, 29.75959307], city: "KOCAELİ", name: "KUTLUCA TAŞ KÖPRÜ" },
+    { coords: [40.776399, 29.576015], city: "KOCAELİ", name: "YAHYA KAPTAN ANIT MEZARI" },
+    { coords: [40.7668591, 29.92117124], city: "KOCAELİ", name: "AKÇAKOCA CAMİİ" },
+    { coords: [40.78859651, 29.53044666], city: "KOCAELİ", name: "MİMAR SİNAN KÖPRÜSÜ" },
+    { coords: [40.763717, 29.921637], city: "KOCAELİ", name: "ABDÜSSELAM CAMİİ" },
+    { coords: [40.6424481, 29.94202134], city: "KOCAELİ", name: "TARİHİ SERVETİYE KÖPRÜSÜ" },
+    { coords: [40.76777382, 29.92520897], city: "KOCAELİ", name: "ALACA MESCİT CAMİİ" },
+    { coords: [40.71278319, 29.73469902], city: "KOCAELİ", name: "KONCA LAHDİ" },
+    { coords: [40.766353, 29.92285918], city: "KOCAELİ", name: "PORTAKALOĞLU MUSTAFA AĞA MESCİDİ" },
+    { coords: [40.772735, 29.728919], city: "KOCAELİ", name: "ÇERKEZ MEHMET EFENDİ CAMİİ / ATALAR CAMİİ" },
+    { coords: [40.76870197, 29.91943229], city: "KOCAELİ", name: "CANFEDA KETHÜDA HATUN ÇEŞMESİ" },
+    { coords: [40.76403541, 29.92134162], city: "KOCAELİ", name: "ATATÜRK REDİF VE ETNOGRAFYA MÜZESİ" },
+    { coords: [40.76171296, 29.90882779], city: "KOCAELİ", name: "SEKA KAĞIT MÜZESİ" },
+    { coords: [40.78454718, 29.61279653], city: "KOCAELİ", name: "HEREKE KALESİ" },
+    { coords: [40.77901629, 30.40028486], city: "SAKARYA", name: "SAKARYA ORHAN CAMİİ" },
+    { coords: [40.77386973, 30.40018333], city: "SAKARYA", name: "SAKARYA MÜZESİ" },
+    { coords: [40.85413209, 30.3563443], city: "SAKARYA", name: "KARAMAN BABA TÜRBESİ" },
+    { coords: [40.66930573, 30.35834134], city: "SAKARYA", name: "KARINCALI DEDE TÜRBESİ" },
+    { coords: [40.79836857, 30.43580591], city: "SAKARYA", name: "SAKARYA KÖPRÜSÜ" },
+    { coords: [41.12241177, 30.64834401], city: "SAKARYA", name: "YENİ MAHALLE CAMİİ" },
+    { coords: [40.77958618, 30.40146408], city: "SAKARYA", name: "ORTA CAMİ" },
+    { coords: [40.77969037, 30.40099651], city: "SAKARYA", name: "UZUN ÇARŞI" },
+    { coords: [40.53982843, 30.30036202], city: "SAKARYA", name: "ALİ FUAD PAŞA KÖPRÜSÜ" },
+    { coords: [40.7883718, 30.40723936], city: "SAKARYA", name: "KARAOSMAN CAMİİ" },
+    { coords: [40.78081687, 30.40053206], city: "SAKARYA", name: "AĞA CAMİİ" },
+    { coords: [40.70039911, 30.30887233], city: "SAKARYA", name: "RAHİME SULTAN CAMİİ" },
+    { coords: [40.39600654, 30.49198425], city: "SAKARYA", name: "KURŞUNLU CAMİİ" },
+    { coords: [40.68295422, 30.22882729], city: "SAKARYA", name: "HASAN FEHMİ PAŞA CAMİİ" },
+    { coords: [40.76933592, 30.39596669], city: "SAKARYA", name: "BOSNA ŞEHİTLİĞİ" },
+    { coords: [40.65077613, 30.75540908], city: "SAKARYA", name: "KEREMALİ TÜRBESİ" },
+    { coords: [40.18452517, 29.06232656], city: "BURSA", name: "EMİR HAN" },
+    { coords: [40.18448017, 29.06352557], city: "BURSA", name: "KOZA HAN" },
+    { coords: [40.1852104, 29.06092351], city: "BURSA", name: "ESKİ İPEK HAN" },
+    { coords: [40.18571267, 29.06028784], city: "BURSA", name: "PİRİNÇ HAN" },
+    { coords: [40.1855116, 29.05791395], city: "BURSA", name: "HİSAR KAPISI" },
+    { coords: [40.18523591, 29.05862962], city: "BURSA", name: "OKÇU BABA PARKI VE TÜRBE" },
+    { coords: [40.18607622, 29.05683477], city: "BURSA", name: "ESKİ BURSA TARİHİ EVLERİ" },
+    { coords: [40.18611276, 29.05581486], city: "BURSA", name: "ŞEHADET CAMİİ" },
+    { coords: [40.18691791, 29.05746866], city: "BURSA", name: "ŞEHİTLER ANITI" },
+    { coords: [40.18658766, 29.05810348], city: "BURSA", name: "TAKKECİ SİNAN DEDE TÜRBESİ" },
+    { coords: [40.18753212, 29.05752308], city: "BURSA", name: "TOPHANE SAAT KULESİ" },
+    { coords: [40.17921286, 29.05757641], city: "BURSA", name: "TEZVEREN DEDE TÜRBESİ" },
+    { coords: [40.17973088, 29.05944838], city: "BURSA", name: "ALİ PAŞA CAMİİ" },
+    { coords: [40.18014744, 29.05854849], city: "BURSA", name: "ARAPLAR CAMİİ" },
+    { coords: [40.18127793, 29.05295662], city: "BURSA", name: "İZZETTİN BEY PINARBAŞI CAMİİ" },
+    { coords: [40.18195776, 29.0558489], city: "BURSA", name: "BURSA MEVLEVİHANESİ" },
+    { coords: [40.1821028, 29.05786712], city: "BURSA", name: "ESKİCİ MEHMET DEDE MEZARI" },
+    { coords: [40.18192453, 29.05767366], city: "BURSA", name: "ESKİCİ MEHMET DEDE AŞEVİ" },
+    { coords: [40.18192453, 29.05767366], city: "BURSA", name: "TAHTAKALE KAPISI" },
+    { coords: [40.18273075, 29.05666693], city: "BURSA", name: "DARÜLKURRA" },
+    { coords: [40.18274826, 29.05626062], city: "BURSA", name: "YERKAPI CAMİİ" },
+    { coords: [40.18290852, 29.05710829], city: "BURSA", name: "ABDURRAHMAN BİSTANİ TÜRBESİ" },
+    { coords: [40.18235005, 29.01672091], city: "BURSA", name: "İNKAYA ÇINARI" },
+    { coords: [40.18135809, 29.07489415], city: "BURSA", name: "YEŞİL TÜRBE" },
+    { coords: [40.18137505, 29.07363712], city: "BURSA", name: "TÜRK VE İSLAM ESERLERİ MÜZESİ" },
+    { coords: [40.18167862, 29.07368362], city: "BURSA", name: "YEŞİL / SULTANİYE MEDRESESİ" },
+    { coords: [40.18130361, 29.07710749], city: "BURSA", name: "BAYEZİD PAŞA MEDRESESİ KÜLTÜR VE SANAT MERKEZİ" },
+    { coords: [40.18116215, 29.0802034], city: "BURSA", name: "HOCA MUSLİHUDDİN EFENDİ MEZARI" },
+    { coords: [40.18125589, 29.08137293], city: "BURSA", name: "ANIT AĞAÇ" },
+    { coords: [40.18034922, 29.08324477], city: "BURSA", name: "ABDÜLLATİF KUDSİ TÜRBESİ" },
+    { coords: [40.18090411, 29.08365816], city: "BURSA", name: "ZEYNİLER CAMİİ" },
+    { coords: [40.18818799, 29.08268018], city: "BURSA", name: "YILDIRIM CAMİİ" },
+    { coords: [40.18789596, 29.08192575], city: "BURSA", name: "YILDIRIM MEDRESESİ" },
+    { coords: [40.18747789, 29.0813289], city: "BURSA", name: "YILDIRIM BEYAZIT PARKI" },
+    { coords: [40.18486914, 29.07299639], city: "BURSA", name: "DAYIOĞLU HAMAMI" },
+    { coords: [40.18840672, 29.07102911], city: "BURSA", name: "DEMİRTAŞPAŞA HAMAMI" },
+    { coords: [40.18827141, 29.07193507], city: "BURSA", name: "TİMURTAŞ MİNARESİ" },
+    { coords: [40.18743913, 29.07348628], city: "BURSA", name: "ACEM REİS CAMİİ" },
+    { coords: [40.19072177, 29.04534133], city: "BURSA", name: "ŞİRİN HATUN TÜRBESİ" },
+    { coords: [40.19101885, 29.04558801], city: "BURSA", name: "MURADİYE EL YAZMALARI MÜZESİ" },
+    { coords: [40.19027769, 29.04521973], city: "BURSA", name: "KARŞIDURAN SÜLEYMAN BEY TÜRBESİ" },
+    { coords: [40.19097988, 29.04651381], city: "BURSA", name: "MURADİYE CAMİİ" },
+    { coords: [40.19140092, 29.04574363], city: "BURSA", name: "17. YÜZYIL OSMANLI EVİ MÜZESİ" },
+    { coords: [40.1919202, 29.04590514], city: "BURSA", name: "ULUUMAY OSMANLI HALK KIYAFETLERİ VE TAKILAR MÜZESİ" },
+    { coords: [40.17091644, 29.08308307], city: "BURSA", name: "BURSA TELEFERİK" },
+    { coords: [40.20879789, 29.00288941], city: "BURSA", name: "ŞEHİTLER ABİDESİ" },
+    { coords: [40.18788598, 29.06844905], city: "BURSA", name: "ÖRDEKLİ KÜLTÜR MERKEZİ" },
+    { coords: [40.19502554, 29.04009984], city: "BURSA", name: "BURSA ATATÜRK EVİ MÜZESİ" },
+    { coords: [40.19582329, 29.04098788], city: "BURSA", name: "BURSA ARKEOLOJİ MÜZESİ" },
+    { coords: [40.43671585, 29.7205569], city: "BURSA", name: "İSTANBUL KAPI" },
+    { coords: [40.43189014, 29.72018122], city: "BURSA", name: "İZNİK KÜLTÜR MÜZESİ" },
+    { coords: [40.4302353, 29.72581206], city: "BURSA", name: "İZNİK TÜRK İSLAM ESERLERİ MÜZESİ" },
+    { coords: [40.42886892, 29.72967314], city: "BURSA", name: "NİKAİA ESKİ SU KEMERİ" },
+    { coords: [40.42778226, 29.72862785], city: "BURSA", name: "NİKAİA ŞEHİR DUVARI" },
+    { coords: [40.42403093, 29.72094579], city: "BURSA", name: "İZNİK MÜZESİ" },
+    { coords: [40.42347812, 29.71917311], city: "BURSA", name: "YENİŞEHİR KAPI" },
+    { coords: [40.42550189, 29.7139318], city: "BURSA", name: "TALİ KAPI" },
+    { coords: [40.42545769, 29.71040144], city: "BURSA", name: "İZNİK GÖLÜ BAZİLİKASI KALINTISI" },
+    { coords: [40.49807716, 29.47628679], city: "BURSA", name: "KERAMET KÖYÜ KAPLICASI VE KAMP ALANI" },
+    { coords: [40.43366077, 29.73779641], city: "BURSA", name: "ABDÜLVAHAP SANCAKTAR TÜRBESİ" },
+    { coords: [40.43662402, 29.72055612], city: "BURSA", name: "NİKEİA TARİHİ YERİ" },
+    { coords: [40.4288287, 29.72904551], city: "BURSA", name: "LEFKE KAPISI" },
+    { coords: [40.20231813, 29.02120709], city: "BURSA", name: "1. MURAT HÜDAVENDİGAR CAMİİ" },
+    { coords: [40.18766949, 29.08262926], city: "BURSA", name: "YILDIRIM BAYEZİD CAMİİ" }, { coords: [40.10539973, 28.86213727], city: "BURSA", name: "DELİKTAŞ MAĞARASI" },
+    { coords: [40.18379985, 29.0497585], city: "BURSA", name: "ZİNDANKAPI" },
+    { coords: [40.18348821, 29.04959364], city: "BURSA", name: "BURSA KALESİ" },
+    { coords: [40.18277193, 29.05361158], city: "BURSA", name: "FETİH KAPI" },
+    { coords: [40.17794642, 29.06070023], city: "BURSA", name: "MAKSEM DARPHANE KÜLTÜR MERKEZİ" },
+    { coords: [40.17412594, 29.06509907], city: "BURSA", name: "HÜNKAR KÖŞKÜ MÜZESİ" },
+    { coords: [40.18237636, 29.06642148], city: "BURSA", name: "BURSA KENT MÜZESİ" },
+    { coords: [40.18399844, 29.05904994], city: "BURSA", name: "ÇAKIR HAMAM" },
+    { coords: [40.18325922, 29.0522966], city: "BURSA", name: "SURLAR" },
+    { coords: [40.12439281, 28.70104713], city: "BURSA", name: "AYVAİNİ MAĞARASI" },
+    { coords: [40.16771542, 28.6809767], city: "BURSA", name: "AĞLAYAN ÇINAR" },
+    { coords: [40.16652048, 28.68016064], city: "BURSA", name: "GÖLYAZI ANTİK LİMANI" },
+    { coords: [40.16601579, 28.67985852], city: "BURSA", name: "GÖLYAZI KENT SURLARI" },
+    { coords: [40.16705206, 28.68028116], city: "BURSA", name: "GÖLYAZI KÖPRÜSÜ" },
+    { coords: [40.20182428, 29.02737856], city: "BURSA", name: "KARAGÖZ MÜZESİ" },
+    { coords: [40.18496421, 29.06407981], city: "BURSA", name: "FİDAN HAN" },
+    { coords: [40.18742794, 28.61158327], city: "BURSA", name: "KUŞ GÖZETLEME KULESİ" },
+    { coords: [40.1869797, 28.61169519], city: "BURSA", name: "ESKİKARAAĞAÇ KÖYÜ YABAN HAYATI VE KUŞ MÜZESİ" },
+    { coords: [40.4213293, 29.71877253], city: "BURSA", name: "KIRGIZLAR TÜRBESİ" },
+    { coords: [40.42932505, 29.72313065], city: "BURSA", name: "HACI ÖZBEK CAMİİ" },
+    { coords: [40.3933299, 28.79510189], city: "BURSA", name: "KEMERLİ KİLİSE" },
+    { coords: [40.39318031, 28.7966116], city: "BURSA", name: "TRİLYE FATİH CAMİİ" },
+    { coords: [40.4303243, 29.72577731], city: "BURSA", name: "NİLÜFER HATUN İMARETİ" },
+    { coords: [40.42975705, 29.72700979], city: "BURSA", name: "YEŞİL CAMİ / İZNİK" },
+    { coords: [40.37973249, 28.88175392], city: "BURSA", name: "MUDANYA MÜTAKERE EVİ MÜZESİ" },
+    { coords: [40.48766276, 29.70166032], city: "BURSA", name: "DİKİLİ TAŞ" },
+    { coords: [40.18465324, 29.06295193], city: "BURSA", name: "ESKİ AYNALI ÇARŞI" },
+    { coords: [40.185159, 29.06280685], city: "BURSA", name: "GEYVE HAN" },
+    { coords: [40.21631546, 29.01279853], city: "BURSA", name: "ABDAL KÖPRÜSÜ" },
+    { coords: [40.19222274, 29.04175611], city: "BURSA", name: "HAMZABEY CAMİİ" },
+    { coords: [40.18459007, 29.06580804], city: "BURSA", name: "TUZ HAN" },
+    { coords: [40.38507418, 28.82710878], city: "BURSA", name: "KUMYAKA BAŞMELEKLER KİLİSESİ" },
+    { coords: [40.1743304, 29.07255708], city: "BURSA", name: "BALABANBEY KALESİ" },
+    { coords: [40.17439164, 29.07246262], city: "BURSA", name: "BALABANCIK HİSARI" },
+    { coords: [40.4280916, 29.71977077], city: "BURSA", name: "MAHMUT ÇELEBİ CAMİİ" },
+    { coords: [40.18354118, 29.06143769], city: "BURSA", name: "TARİHİ ÇEŞME" },
+    { coords: [40.18278435, 29.06342697], city: "BURSA", name: "KARAÇELEBİZADE ÇEŞMESİ" },
+    { coords: [40.43433207, 29.15268417], city: "BURSA", name: "BALIK PAZARI / YENİ CAMİ" },
+    { coords: [40.18668465, 29.06791037], city: "BURSA", name: "ABDAL MEHMET CAMİİ" },
+    { coords: [40.18693254, 29.06818306], city: "BURSA", name: "ABDAL MEHMET TÜRBESİ" },
+    { coords: [40.18467762, 29.06688865], city: "BURSA", name: "ÇUKUR HAN" },
+    { coords: [40.19041346, 29.04540604], city: "BURSA", name: "ŞEHZADE MAHMUT TÜRBESİ" },
+    { coords: [40.17973009, 29.05944788], city: "BURSA", name: "ALİ PAŞA CAMİİ" },
+    { coords: [40.19038709, 29.05847232], city: "BURSA", name: "AHMET PAŞA CAMİİ" },
+    { coords: [40.14366522, 29.98784949], city: "BİLECİK", name: "TARİHİ MİNARE" },
+    { coords: [40.14338895, 29.98633723], city: "BİLECİK", name: "OSMANLI PADİŞAHLARI TARİH ŞERİDİ MÜZESİ" },
+    { coords: [40.1427519, 29.98500212], city: "BİLECİK", name: "TARİHİ BİLECİK CAMİİ" },
+    { coords: [39.93256279, 30.16907515], city: "BİLECİK", name: "METRİSTEPE ZAFER ANITI" },
+    { coords: [40.02524835, 30.17927769], city: "BİLECİK", name: "ERTUĞRUL GAZİ TÜRBESİ ÇEŞMESİ" },
+    { coords: [40.01581918, 30.18149709], city: "BİLECİK", name: "HAMİDİYE İDADİSİ" },
+    { coords: [40.01516888, 30.1816942], city: "BİLECİK", name: "SÖĞÜT ERTUĞRUL GAZİ MÜZESİ" },
+    { coords: [40.01569144, 30.18168511], city: "BİLECİK", name: "ÇİFTE MİNARELİ HAMİDİYE CAMİİ" },
+    { coords: [40.01156959, 30.18845807], city: "BİLECİK", name: "SÖĞÜT BELEDİYESİ ŞEHİTLİK" },
+    { coords: [39.88611444, 30.0465023], city: "BİLECİK", name: "ALPEREN CAMİİ" },
+    { coords: [40.13779744, 29.98347815], city: "BİLECİK", name: "BİLECİK SAAT KULESİ" },
+    { coords: [40.14388798, 29.98188075], city: "BİLECİK", name: "BİLECİK ARKEOLOJİ VE ETNOGRAFYA MÜZESİ" },
+    { coords: [39.90610787, 30.03709264], city: "BİLECİK", name: "KASIMPAŞA CAMİİ" },
+    { coords: [40.35533446, 30.01243154], city: "BİLECİK", name: "OSMANELİ AYA YORGİ KİLİSESİ" },
+    { coords: [40.01446304, 30.18294457], city: "BİLECİK", name: "DARÜL EYTAM" },
+    { coords: [40.01362091, 30.1834181], city: "BİLECİK", name: "ÇELEBİ SULTAN MEHMET CAMİİ" },
+    { coords: [40.01396252, 30.18300417], city: "BİLECİK", name: "SÖĞÜT KAYMAKAM ÇEŞMESİ" },
+    { coords: [40.01403975, 30.18309051], city: "BİLECİK", name: "ATATÜRK ANITI" },
+    { coords: [40.24381647, 30.02244729], city: "BİLECİK", name: "KÖPRÜLÜ MEHMET PAŞA CAMİİ" },
+    { coords: [40.24300552, 30.02342242], city: "BİLECİK", name: "KÖPRÜLÜ MEHMET PAŞA KERVANSARAYI" },
+    { coords: [40.13622725, 29.98231809], city: "BİLECİK", name: "ÜÇ BOYUTLU OSMANLI DEVLET ARMASI" },
+    { coords: [40.01172481, 30.17979056], city: "BİLECİK", name: "KUYULU MESCİT" },
+    { coords: [40.9904675, 29.02917191], city: "İSTANBUL", name: "BOĞA HEYKELİ" },
+    { coords: [40.09823926, 29.1322956], city: "BURSA", name: "ULUDAĞ KAYAK MERKEZİ" },
+    { coords: [41.0148975, 29.06953968], city: "İSTANBUL", name: "ÇİLEHANE CAMİİ" },
+    { coords: [40.66462618, 29.29748142], city: "YALOVA", name: "YÜRÜYEN KÖŞK" },
+    { coords: [40.63414753, 29.2247487], city: "YALOVA", name: "KARACA ARBORETUM" },
+    { coords: [40.6025377, 29.17381835], city: "YALOVA", name: "YALOVA ATATÜRK KÖŞKÜ" },
+    { coords: [40.65874901, 29.27014834], city: "YALOVA", name: "YALOVA KENT MÜZESİ" },
+    { coords: [40.59120443, 29.05764115], city: "YALOVA", name: "TEŞVİKİYE KÖYÜ" },
+    { coords: [40.51915767, 28.88936399], city: "YALOVA", name: "MECİDİYE KÖYÜ CAMİİ" },
+    { coords: [40.51673696, 28.79937694], city: "YALOVA", name: "TAVŞANTEPE CAMİİ" },
+    { coords: [40.65716469, 29.26800027], city: "YALOVA", name: "YALOVA MERKEZ CAMİİ" },
+    { coords: [40.65763562, 29.25336301], city: "YALOVA", name: "DEPREM ANITI" },
+    { coords: [41.84070113, 27.55570098], city: "KIRKLARELİ", name: "DUPNİSA MAĞARASI" },
+    { coords: [41.63428413, 28.08444829], city: "KIRKLARELİ", name: "AYA NİKOLA MANASTIRI" },
+    { coords: [41.40780606, 27.35179401], city: "KIRKLARELİ", name: "SOKOLLU MEHMET PAŞA HAMAMI" },
+    { coords: [41.40651848, 27.35434754], city: "KIRKLARELİ", name: "KONGRE MEYDANI" },
+    { coords: [41.40179955, 27.3573188], city: "KIRKLARELİ", name: "LÜLEBURGAZ KURTULUŞ CAMİİ" },
+    { coords: [41.40776111, 27.34593361], city: "KIRKLARELİ", name: "MİMAR SİNAN KÖPRÜSÜ" },
+    { coords: [41.40857471, 27.35081525], city: "KIRKLARELİ", name: "ZİNDAN BABA TÜRBESİ" },
+    { coords: [41.7337019, 27.22485479], city: "KIRKLARELİ", name: "KIRKLARELİ MÜZESİ" },
+    { coords: [41.62714771, 27.56977715], city: "KIRKLARELİ", name: "BİNBİR OKLU AHMET BABA TÜRBESİ" },
+    { coords: [41.7213472, 27.09688823], city: "KIRKLARELİ", name: "KOYUNBABA KİLİSESİ" },
+    { coords: [41.73557705, 27.22384649], city: "KIRKLARELİ", name: "HIZIR BEY HAMAMI" },
+    { coords: [41.73670107, 27.22974217], city: "KIRKLARELİ", name: "KIRK ŞEHİTLİK" },
+    { coords: [41.40917902, 27.35387985], city: "KIRKLARELİ", name: "4. MEHMET ÇEŞMESİ" },
+    { coords: [41.4088284, 27.35077806], city: "KIRKLARELİ", name: "ZAFER ÇEŞMESİ" },
+    { coords: [41.42861405, 27.09491887], city: "KIRKLARELİ", name: "TARİHİ HAMAM" },
+    { coords: [41.42850769, 27.09484167], city: "KIRKLARELİ", name: "TARİHİ ÇEŞME" },
+    { coords: [41.42855644, 27.09470383], city: "KIRKLARELİ", name: "HAVUZLU HEYKEL" },
+    { coords: [41.3348389, 26.92230519], city: "KIRKLARELİ", name: "ERGENE KÖPRÜSÜ / PEHLİVANKÖYAKARCA KÖPRÜSÜ" }, { coords: [41.62716726, 27.51477564], city: "KIRKLARELİ", name: "HUNDİ HATUN CAMİİ" },
+    { coords: [41.71806848, 27.19372501], city: "KIRKLARELİ", name: "KARAHIDIR ANITI" },
+    { coords: [41.42837815, 27.09484469], city: "KIRKLARELİ", name: "FATİH CAMİ" },
+    { coords: [41.73569987, 27.22409034], city: "KIRKLARELİ", name: "BÜYÜK CAMİ ÇEŞMESİ" },
+    { coords: [41.73422483, 27.22221696], city: "KIRKLARELİ", name: "KARAKAŞ BEY CAMİİ" },
+    { coords: [41.57535554, 27.76675038], city: "KIRKLARELİ", name: "HASAN BEY CAMİİ" },
+    { coords: [41.73410279, 27.22531762], city: "KIRKLARELİ", name: "KAPAN CAMİİ" },
+    { coords: [41.34719233, 26.92322175], city: "KIRKLARELİ", name: "PEHLİVANKÖY CAMİİ" },
+    { coords: [41.73520834, 27.22684895], city: "KIRKLARELİ", name: "PAŞA ÇEŞME" },
+    { coords: [41.73526783, 27.22698267], city: "KIRKLARELİ", name: "PAŞA CAMİİ" },
+    { coords: [41.73426733, 27.22935437], city: "KIRKLARELİ", name: "KAYYUMOĞLU ÇEŞMESİ" },
+    { coords: [41.62136491, 27.52339137], city: "KIRKLARELİ", name: "SADIKAĞA CAMİİ" },
+    { coords: [41.73452276, 27.22646725], city: "KIRKLARELİ", name: "KOCAHIDIR ÇEŞMESİ" },
+    { coords: [41.73643549, 27.22563279], city: "KIRKLARELİ", name: "KADI ÇEŞMESİ" },
+    { coords: [41.73635293, 27.22583262], city: "KIRKLARELİ", name: "KADI ALİ CAMİİ" },
+    { coords: [41.73796109, 27.22786726], city: "KIRKLARELİ", name: "GERDANLI ÇEŞMESİ" },
+    { coords: [41.68749206, 27.36372576], city: "KIRKLARELİ", name: "ÜSKÜPDERE CAMİİ" },
+    { coords: [41.57336232, 27.7674505], city: "KIRKLARELİ", name: "MERKEZ YENİ CAMİİ" },
+    { coords: [41.73850664, 27.22269803], city: "KIRKLARELİ", name: "ATATÜRK EVİ" },
+    { coords: [40.59940738, 29.17348465], city: "YALOVA", name: "ÜVEZPINAR MAHALLESİ CAMİİ" },
+    { coords: [41.67810149, 26.55914799], city: "EDİRNE", name: "SELİMİYE CAMİİ" },
+    { coords: [41.67878729, 26.55958987], city: "EDİRNE", name: "EDİRNE MERKEZ SARAY HAMAMI" },
+    { coords: [41.67748776, 26.55917578], city: "EDİRNE", name: "SELİMİYE VAKIF MÜZESİ" },
+    { coords: [41.67729398, 26.55904638], city: "EDİRNE", name: "SELİMİYE ARASTASI" },
+    { coords: [41.67844012, 26.56007947], city: "EDİRNE", name: "TÜRK VE İSLAM ESERLERİ MÜZESİ" },
+    { coords: [41.67879831, 26.5605706], city: "EDİRNE", name: "ARKEOLOJİ VE ETNOGRAFYA MÜZESİ" },
+    { coords: [41.67900645, 26.55789679], city: "EDİRNE", name: "EDİRNE KENT MÜZESİ" },
+    { coords: [41.67941563, 26.55820512], city: "EDİRNE", name: "ŞAHABETTİN PAŞA KİRAZLI CAMİİ" },
+    { coords: [41.67943178, 26.56115486], city: "EDİRNE", name: "ALİ ATİK PAŞA CAMİİ" },
+    { coords: [41.67991971, 26.56186456], city: "EDİRNE", name: "HATİP ÇEŞMESİ" },
+    { coords: [41.67718218, 26.56070128], city: "EDİRNE", name: "HIDIR AĞA CAMİİ" },
+    { coords: [41.66218883, 26.55131175], city: "EDİRNE", name: "HACI ADİL BEY ÇEŞMESİ" },
+    { coords: [41.6615359, 26.54859849], city: "EDİRNE", name: "DÜNYANIN EN BÜYÜK TAVASI" },
+    { coords: [41.6857621, 26.54282099], city: "EDİRNE", name: "İKİNCİ SELİM KÜLLİYESİ / SAĞLIK MÜZESİ" },
+    { coords: [41.68552892, 26.54300516], city: "EDİRNE", name: "İMARET MÜZESİ" },
+    { coords: [41.68577302, 26.54422503], city: "EDİRNE", name: "2. BAYEZİD CAMİİ" },
+    { coords: [41.68630231, 26.54544345], city: "EDİRNE", name: "AŞÇI YAHYA BABA KABRİ" },
+    { coords: [41.68624528, 26.54358542], city: "EDİRNE", name: "SİNAN AĞA ÇEŞMESİ" },
+    { coords: [41.68988073, 26.55648914], city: "EDİRNE", name: "TARİHİ ADALET KASRI" },
+    { coords: [41.68273661, 26.5466364], city: "EDİRNE", name: "YALNIZGÖZ KÖPRÜSÜ" },
+    { coords: [41.68568309, 26.55423354], city: "EDİRNE", name: "SARAÇHANE KÖPRÜSÜ" },
+    { coords: [41.6890719, 26.55614853], city: "EDİRNE", name: "ANIT AĞACI" },
+    { coords: [41.68867302, 26.55763165], city: "EDİRNE", name: "PEHLİVAN HEYKELİ" },
+    { coords: [41.69026018, 26.55626429], city: "EDİRNE", name: "FATİH KÖPRÜSÜ" },
+    { coords: [41.69110622, 26.55640113], city: "EDİRNE", name: "HARABE KUM KASRI HAMAMI" },
+    { coords: [41.69421882, 26.5639519], city: "EDİRNE", name: "4. MEHMET AV KÖŞKÜ" },
+    { coords: [41.68791827, 26.55196947], city: "EDİRNE", name: "MUSTAFA PAŞA ÇEŞMESİ" },
+    { coords: [41.68281164, 26.55508009], city: "EDİRNE", name: "BEYLERBEYİ CAMİİ" },
+    { coords: [41.68244352, 26.56467607], city: "EDİRNE", name: "MURADİYE CAMİİ" },
+    { coords: [41.68246455, 26.56358592], city: "EDİRNE", name: "UMURBEY TAVANLI ÇEŞME" },
+    { coords: [41.68043621, 26.57018413], city: "EDİRNE", name: "BULGAR KİLİSESİ" },
+    { coords: [40.72410627, 26.08120193], city: "EDİRNE", name: "ENEZ KALESİ" },
+    { coords: [40.72414364, 26.08203179], city: "EDİRNE", name: "FATİH CAMİİ" },
+    { coords: [41.67515704, 26.5755951], city: "EDİRNE", name: "BALKAN SAVAŞLARI MÜZESİ" },
+    { coords: [41.67311112, 26.59203338], city: "EDİRNE", name: "MEVLANA CAMİİ" },
+    { coords: [41.65262757, 26.52001465], city: "EDİRNE", name: "LOZAN ANITI VE MÜZESİ" },
+    { coords: [41.65222498, 26.52059221], city: "EDİRNE", name: "TRAKYA ÜNİVERSİTESİ DOĞA TARİHİ MÜZESİ" },
+    { coords: [41.65161927, 26.52274743], city: "EDİRNE", name: "İLHAM KOMAN HEYKEL VE RESİM MÜZESİ" },
+    { coords: [41.65259862, 26.52304478], city: "EDİRNE", name: "KARAAĞAÇ TREN İSTASYONU" },
+    { coords: [41.65197162, 26.5226166], city: "EDİRNE", name: "MİLLİ MÜCADELE VE LOZAN MÜZESİ" },
+    { coords: [41.65244316, 26.52469147], city: "EDİRNE", name: "OSMAN İNCİ MÜZESİ" },
+    { coords: [41.68668498, 26.51874174], city: "EDİRNE", name: "HIDIRLIK TABYALARI" },
+    { coords: [41.6862257, 26.52056242], city: "EDİRNE", name: "BALKAN TARİHİ MÜZESİ" },
+    { coords: [41.6705924, 26.56317217], city: "EDİRNE", name: "EKMEKÇİZADE KERVANSARAYI BALMUMU HEYKEL MÜZESİ" },
+    { coords: [41.67123635, 26.56365558], city: "EDİRNE", name: "AYŞE KADIN CAMİİ" },
+    { coords: [41.6774688, 26.55215305], city: "EDİRNE", name: "MAKEDONYA SAAT KULESİ" },
+    { coords: [41.67735896, 26.552116], city: "EDİRNE", name: "EDİRNE KALESİ" },
+    { coords: [41.67826645, 26.55376479], city: "EDİRNE", name: "ÜÇ ŞEREFELİ / BURMALI CAMİ" },
+    { coords: [41.67849873, 26.55373446], city: "EDİRNE", name: "SAATLİ MEDRESE" },
+    { coords: [41.67839813, 26.55432485], city: "EDİRNE", name: "TARİHİ PEYKLER MEDRESESİ" },
+    { coords: [41.67671476, 26.55571588], city: "EDİRNE", name: "ESKİ CAMİİ" },
+    { coords: [41.67553408, 26.55256972], city: "EDİRNE", name: "ALİ PAŞA CAMİİ" },
+    { coords: [41.67384162, 26.55442184], city: "EDİRNE", name: "LARİ CAMİİ" },
+    { coords: [41.67626745, 26.55479617], city: "EDİRNE", name: "BEDESTEN ÇARŞISI" },
+    { coords: [41.67820619, 26.55265187], city: "EDİRNE", name: "SOKULLU MEHMET PAŞA HAMAMI" },
+    { coords: [41.27779929, 26.67505379], city: "EDİRNE", name: "UZUN KÖPRÜ / ERGENE KÖPRÜSÜ" },
+    { coords: [41.67993447, 26.55246633], city: "EDİRNE", name: "DEVECİ HANI" },
+    { coords: [41.6634576, 26.56419572], city: "EDİRNE", name: "KONSTANTİN VE ELENA KİLİSESİ" },
+    { coords: [41.67118221, 26.54814401], city: "EDİRNE", name: "DARÜ-L HADİS CAMİİ" },
+    { coords: [41.67102368, 26.54788197], city: "EDİRNE", name: "DARÜ-L HADİS TÜRBESİ" },
+    { coords: [41.68935671, 26.55188635], city: "EDİRNE", name: "EDİRNE SARAYI" },
+    { coords: [41.67027008, 26.56533266], city: "EDİRNE", name: "KADI BEDRETTİN CAMİİ" },
+    { coords: [41.67273351, 26.56158372], city: "EDİRNE", name: "DEFTERDAR MUSTAFA PAŞA CAMİİ" },
+    { coords: [41.67846555, 26.55791808], city: "EDİRNE", name: "MERZİFONLU KARA MUSTAFA PAŞA CAMİİ" },
+    { coords: [41.67333417, 26.55883184], city: "EDİRNE", name: "SİTTİ ŞAH CAMİİ" },
+    { coords: [41.66019638, 26.58183671], city: "EDİRNE", name: "HACILAR EZANI, NAMAZGAHI VE ÇEŞMESİ" },
+    { coords: [41.67671042, 26.55679825], city: "EDİRNE", name: "MEZİTBEY ÇUKUR HAMAMI" },
+    { coords: [41.70827507, 26.5215925], city: "EDİRNE", name: "EDİRNE ASKER HASTANESİ ŞEHİTLİĞİ" },
+    { coords: [41.68072894, 26.56168861], city: "EDİRNE", name: "NECMİ İĞE EVİ ETNOGRAFYA MÜZESİ" },
+    { coords: [41.74161067, 26.67272554], city: "EDİRNE", name: "TARİHİ YEDİGÖZ KEMERİ" },
+    { coords: [40.72494027, 26.10696056], city: "EDİRNE", name: "ÇATALTEPE TÜMÜLÜSÜ" },
+    { coords: [40.71805369, 26.0877608], city: "EDİRNE", name: "KRAL KIZI BAZİLİKASI" },
+    { coords: [41.67749522, 26.55917732], city: "EDİRNE", name: "SELİMİYE VAKFI MÜZESİ" },
+    { coords: [40.91222555, 26.37707813], city: "EDİRNE", name: "İPSALA ŞEHİTLER ANITI" },
+    { coords: [40.69897123, 26.04892192], city: "EDİRNE", name: "ENEZ LİMANI FENERİ" },
+    { coords: [40.97587936, 27.51248613], city: "TEKİRDAĞ", name: "TEKİRDAĞ ARKEOLOJİ VE ETNOGRAFYA MÜZESİ" }, { coords: [40.97814559, 27.51398057], city: "TEKİRDAĞ", name: "TEKİRDAĞ KENT MÜZESİ" },
+    { coords: [40.97763556, 27.51113193], city: "TEKİRDAĞ", name: "TEKİRDAĞ SAAT KULESİ" },
+    { coords: [40.97837979, 27.51124492], city: "TEKİRDAĞ", name: "TEKİRDAĞ VALİLİĞİ" },
+    { coords: [40.97777827, 27.51043216], city: "TEKİRDAĞ", name: "MÜREKKEPÇİ CAMİİ" },
+    { coords: [40.97727033, 27.50974545], city: "TEKİRDAĞ", name: "ÖMER HAYYAM PARKI" },
+    { coords: [40.97615741, 27.50854478], city: "TEKİRDAĞ", name: "TEKİRDAĞ BÜYÜKŞEHİR BELEDİYESİ" },
+    { coords: [40.97563564, 27.50656784], city: "TEKİRDAĞ", name: "TEKİRDAĞ SAKARYA PARKI" },
+    { coords: [40.97454596, 27.50537799], city: "TEKİRDAĞ", name: "TEKİRDAĞ MÜZESİ" },
+    { coords: [40.97388273, 27.50426541], city: "TEKİRDAĞ", name: "TEKİRDAĞ KÜLTÜR MERKEZİ" },
+    { coords: [40.97311514, 27.50305629], city: "TEKİRDAĞ", name: "TEKİRDAĞ İL KÜTÜPHANESİ" },
+    { coords: [40.97220469, 27.50204734], city: "TEKİRDAĞ", name: "TEKİRDAĞ ANIT MEZAR" },
+    { coords: [40.9714327, 27.50097858], city: "TEKİRDAĞ", name: "TEKİRDAĞ GÖLETİ" },  { coords: [41.01152757, 28.98336817], city: "İSTANBUL", name: "TOPKAPI SARAYI" },
+    { coords: [41.02557707, 28.97410714], city: "İSTANBUL", name: "GALATA KULESİ" },
+    { coords: [41.00565155, 28.97704112], city: "İSTANBUL", name: "SULTAN AHMET CAMİSİ" },
+    { coords: [41.01603078, 28.96400328], city: "İSTANBUL", name: "SÜLEYMANİYE CAMİSİ" },
+    { coords: [41.00859107, 28.98015354], city: "İSTANBUL", name: "AYASOFYAİ KEBİR CAMİİ ŞERİFİ" },
+    { coords: [41.03916427, 29.00044867], city: "İSTANBUL", name: "DOLMABAHÇE SARAYI" },
+    { coords: [41.01066858, 28.96804664], city: "İSTANBUL", name: "KAPALIÇARŞI" },
+    { coords: [41.02113782, 29.00412453], city: "İSTANBUL", name: "KIZ KULESİ" },
+    { coords: [41.00835159, 28.97783508], city: "İSTANBUL", name: "YEREBATAN SARNICI" },
+    { coords: [40.97382255, 28.78334468], city: "İSTANBUL", name: "FLORYA ATATÜRK DENİZ KÖŞKÜ" },
+    { coords: [41.01168547, 28.98134122], city: "İSTANBUL", name: "İSTANBUL ARKEOLOJİ MÜZESİ" },
+    { coords: [41.08493444, 29.05670204], city: "İSTANBUL", name: "RUMELİ HİSARI" },
+    { coords: [41.08213667, 29.06687198], city: "İSTANBUL", name: "ANADOLU HİSARI" },
+    { coords: [41.00622357, 28.9747201], city: "İSTANBUL", name: "TÜRK VE İSLAM ESERLERİ MÜZESİ" },
+    { coords: [41.04250703, 29.0400591], city: "İSTANBUL", name: "BEYLERBEYİ SARAYI" },
+    { coords: [41.02650276, 28.95142753], city: "İSTANBUL", name: "YAVUZ SULTAN SELİM CAMİİ" },
+    { coords: [41.03118069, 28.93916684], city: "İSTANBUL", name: "KARİYE CAMİİ" },
+    { coords: [41.04792247, 28.93384017], city: "İSTANBUL", name: "EYÜP SULTAN CAMİİ" },
+    { coords: [41.00869391, 28.98101396], city: "İSTANBUL", name: "HALI MÜZESİ" },
+    { coords: [41.05002077, 29.011557], city: "İSTANBUL", name: "YILDIZ SARAYI" },
+    { coords: [41.01276347, 28.9648498], city: "İSTANBUL", name: "BEYAZIT KULESİ" },
+    { coords: [41.01931468, 28.95031302], city: "İSTANBUL", name: "FATİH SULTAN MEHMET TÜRBESİ" },
+    { coords: [41.01566868, 28.96446064], city: "İSTANBUL", name: "KANUNİ SULTAN SÜLEYMAN TÜRBESİ" },
+    { coords: [41.04812469, 28.93342172], city: "İSTANBUL", name: "EYÜP SULTAN TÜRBESİ" },
+    { coords: [41.02564885, 28.9513256], city: "İSTANBUL", name: "YAVUZ SULTAN SELİM TÜRBESİ" },
+    { coords: [41.07839002, 29.06494341], city: "İSTANBUL", name: "KÜÇÜKSU KASRI" },
+    { coords: [41.05422724, 28.93377498], city: "İSTANBUL", name: "PIERRE LOTİ TEPESİ (İDRİS TEPESİ)" },
+    { coords: [41.01021256, 28.97058112], city: "İSTANBUL", name: "NURUOSMANİYE CAMİİ" },
+    { coords: [41.05899653, 28.94921157], city: "İSTANBUL", name: "MİNİATÜRK" },
+    { coords: [41.04947058, 29.00996913], city: "İSTANBUL", name: "YILDIZ HAMİDİYE CAMİİ" },
+    { coords: [41.01826908, 28.92038027], city: "İSTANBUL", name: "PANAROMA 1453 MÜZESİ" },
+    { coords: [41.02642707, 28.98083238], city: "İSTANBUL", name: "KILIÇ ALİ PAŞA CAMİİ" },
+    { coords: [41.00874621, 28.97244118], city: "İSTANBUL", name: "SULTAN 2. ABDÜLHAMİD TÜRBESİ" },
+    { coords: [41.02237865, 29.01455831], city: "İSTANBUL", name: "AZİZ MAHMUT HÜDAYİ CAMİ, TÜRBESİ" },
+    { coords: [41.01660998, 29.0660054], city: "İSTANBUL", name: "ÇAMLICA KULESİ" },
+    { coords: [41.0343073, 29.07102112], city: "İSTANBUL", name: "BÜYÜK ÇAMLICA CAMİİ" },
+    { coords: [41.1624575, 29.08525381], city: "İSTANBUL", name: "YUŞA TEPESİ" },
+    { coords: [41.01964501, 28.94989722], city: "İSTANBUL", name: "FATİH CAMİİ" },
+    { coords: [41.01330787, 28.9815101], city: "İSTANBUL", name: "GÜLHANE PARKI" },
+    { coords: [41.01317097, 29.0243184], city: "İSTANBUL", name: "ŞAKİRİN CAMİİ" },
+    { coords: [41.01881186, 29.02382164], city: "İSTANBUL", name: "ATİK VALİDE CAMİİ" },
+    { coords: [41.03674886, 28.99527897], city: "İSTANBUL", name: "DOLMABAHÇE CAMİİ" },
+    { coords: [41.01649198, 28.97050867], city: "İSTANBUL", name: "MISIR ÇARŞISI" },
+    { coords: [41.04722316, 29.02693707], city: "İSTANBUL", name: "BÜYÜK MECİDİYE CAMİİ" },
+    { coords: [41.07095856, 29.0572893], city: "İSTANBUL", name: "ADİLE SULTAN SARAYI" },
+    { coords: [41.05034441, 29.0109991], city: "İSTANBUL", name: "BÜYÜK MABEYN KÖŞKÜ" },
+    { coords: [41.01969781, 28.9571909], city: "İSTANBUL", name: "MOLLA ZEYREK CAMİİ" },
+    { coords: [40.9935101, 28.92272376], city: "İSTANBUL", name: "YEDİKULE HİSARI MÜZESİ" },
+    { coords: [41.02652784, 28.9519855], city: "İSTANBUL", name: "ABDÜLMECİT HAN TÜRBESİ" },
+    { coords: [41.02515298, 29.01452161], city: "İSTANBUL", name: "VALİDE-İ CEDİD CAMİİ" },
+    { coords: [41.04536938, 29.01677694], city: "İSTANBUL", name: "KÜÇÜK MECİDİYE CAMİİ" },
+    { coords: [41.04406085, 29.01515833], city: "İSTANBUL", name: "ÇIRAĞAN SARAYI" },
+    { coords: [41.17872987, 29.09476172], city: "İSTANBUL", name: "YOROS KALESİ" },
+    { coords: [41.00835578, 28.977837], city: "İSTANBUL", name: "YEREBATAN SARNICI" },
+    { coords: [41.02918792, 28.94947883], city: "İSTANBUL", name: "FENER RUM ERKEK LİSESİ" },
+    { coords: [40.99655363, 29.0190176], city: "İSTANBUL", name: "HAYDARPAŞA GARI" },
+    { coords: [41.00960178, 28.98118876], city: "İSTANBUL", name: "AYA İRİNİ MÜZESİ" },
+    { coords: [41.0170181, 28.97198983], city: "İSTANBUL", name: "YENİ CAMİ" },
+    { coords: [41.01002074, 28.95301858], city: "İSTANBUL", name: "PERTEVNİYAL VALİDE SULTAN CAMİİ" },
+    { coords: [41.00272015, 28.97219996], city: "İSTANBUL", name: "KÜÇÜK AYASOFYA CAMİİ" },
+    { coords: [41.0070748, 28.97668844], city: "İSTANBUL", name: "ALMAN ÇEŞMESİ" },
+    { coords: [40.78226572, 29.4417079], city: "KOCAELİ", name: "HANNİBAL ANITI" },
+    { coords: [40.77127497, 29.43216155], city: "KOCAELİ", name: "ESKİHİSAR KALESİ" },
+    { coords: [40.76935524, 29.42677729], city: "KOCAELİ", name: "OSMAN HAMDİ BEY MÜZESİ" },
+    { coords: [40.79974561, 29.43151095], city: "KOCAELİ", name: "ÇOBAN MUSTAFA PAŞA KÜLLİYESİ" },
+    { coords: [40.78348631, 29.61536561], city: "KOCAELİ", name: "KAİSER 2. WİLHELM KÖŞKÜ" },
+    { coords: [40.80376863, 29.43780393], city: "KOCAELİ", name: "TARİHİ SU DOLABI" },
+    { coords: [40.73724412, 30.37247673], city: "SAKARYA", name: "JUSTİNİANUS KÖPRÜSÜ" },
+    { coords: [40.18385771, 29.06186493], city: "BURSA", name: "BURSA ULU CAMİ" },
+    { coords: [40.1838197, 29.06402684], city: "BURSA", name: "GAZİ ORHAN BEY CAMİİ" },
+    { coords: [40.18484132, 29.0616064], city: "BURSA", name: "BURSA KAPALI ÇARŞI" },
+    { coords: [40.18560167, 29.06120684], city: "BURSA", name: "İVAZPAŞA CAMİİ" },
+    { coords: [40.18672814, 29.057357], city: "BURSA", name: "OSMAN GAZİ TÜRBESİ" },
+    { coords: [40.17985152, 29.05615674], city: "BURSA", name: "İVAZPAŞA TÜRBESİ" },
+    { coords: [40.18294901, 29.05732783], city: "BURSA", name: "ÜFTADE CAMİİ VE TÜRBESİ" },
+    { coords: [40.18174231, 29.074551], city: "BURSA", name: "HASAN CAN KABRİ" },
+    { coords: [40.1812087, 29.08108355], city: "BURSA", name: "EMİR SULTAN CAMİİ" },
+    { coords: [40.18097032, 29.08365816], city: "BURSA", name: "MOLLA HÜSREV TÜRBESİ" },
+    { coords: [40.18256535, 29.08646513], city: "BURSA", name: "YILDIRIM BEYAZIT HEYKELİ" },
+    { coords: [40.18812997, 29.08244221], city: "BURSA", name: "YILDIRIM BEYAZIT TÜRBESİ" },
+    { coords: [40.18627444, 29.07562105], city: "BURSA", name: "PANAROMA 1326 BURSA FETİH MÜZESİ" },
+    { coords: [40.18823484, 29.07188721], city: "BURSA", name: "TİMURTAŞPAŞA CAMİİ" },
+    { coords: [40.17606045, 29.17216273], city: "BURSA", name: "CUMALIKIZIK KÖYÜ" },
+    { coords: [40.19040996, 29.04570108], city: "BURSA", name: "ŞEHZADE MUSTAFA TÜRBESİ" },
+    { coords: [40.19055283, 29.04595071], city: "BURSA", name: "2. MURAD TÜRBESİ" },
+    { coords: [40.19108026, 29.04586281], city: "BURSA", name: "HÜMA HATUN TÜRBESİ" },
+    { coords: [40.4292927, 29.72007069], city: "BURSA", name: "İZNİK AYASOFYA CAMİİ" },
+    { coords: [40.18194263, 29.07080552], city: "BURSA", name: "IRGANDI KÖPRÜSÜ" },
+    { coords: [40.18672993, 29.05767714], city: "BURSA", name: "ORHAN GAZİ TÜRBESİ" },
+    { coords: [40.17657104, 29.07104002], city: "BURSA", name: "TOFAŞ ANADOLU ARABALAR MÜZESİ" },
+    { coords: [40.4279813, 29.72318593], city: "BURSA", name: "SÜLEYMAN PAŞA MEDRESESİ" },
+    { coords: [40.42996156, 29.72337578], city: "BURSA", name: "EŞREFOĞLU RUMİ VE TÜRBESİ" },
+    { coords: [40.42888046, 29.72904845], city: "BURSA", name: "İZNİK KALESİ" },
+    { coords: [40.42885165, 29.73486827], city: "BURSA", name: "ÇANDARLI HAYRETTİN PAŞA TÜRBESİ" },
+    { coords: [40.20230967, 29.02094883], city: "BURSA", name: "1. MURAT HÜDAVENDİGAR TÜRBESİ" },
+    { coords: [40.17788167, 29.05806036], city: "BURSA", name: "SOMUNCUBABA EVİ VE FIRINI" }, { coords: [40.14373885, 29.98827727], city: "BİLECİK", name: "ŞEYH EDEBALİ TÜRBESİ" },
+    { coords: [40.14373218, 29.98843216], city: "BİLECİK", name: "BALA HATUN TÜRBESİ" },
+    { coords: [40.14306343, 29.98782322], city: "BİLECİK", name: "ORHANGAZİ CAMİİ" },
+    { coords: [40.02550147, 30.1792937], city: "BİLECİK", name: "ERTUĞRUL GAZİ TÜRBESİ" },
+    { coords: [40.02635541, 30.17927348], city: "BİLECİK", name: "ERTUĞRUL GAZİ CAMİİ" },
+    { coords: [40.02616206, 30.18131756], city: "BİLECİK", name: "HALİME HATUN TÜRBESİ" },
+    { coords: [40.0211765, 30.18172069], city: "BİLECİK", name: "OSMAN GAZİ CAMİİ" },
+    { coords: [40.28383236, 30.31673606], city: "BİLECİK", name: "MİHAL BEY HANI" },
+    { coords: [40.28343895, 30.3167255], city: "BİLECİK", name: "MİHAL GAZİ CAMİİ" },
+    { coords: [40.73575966, 29.51184212], city: "YALOVA", name: "OSMAN GAZİ KÖPRÜSÜ" },
+    { coords: [41.40783611, 27.35106985], city: "KIRKLARELİ", name: "SOKOLLU MEHMET PAŞA CAMİİ" },
+    { coords: [41.57635925, 27.76711188], city: "KIRKLARELİ", name: "GAZİ SÜLEYMAN PAŞA CAMİİ / KÜÇÜK AYASOFYA" },
+    { coords: [41.66302937, 26.55203212], city: "EDİRNE", name: "MERİÇ KÖPRÜSÜ" },
+    { coords: [41.68419125, 26.54429911], city: "EDİRNE", name: "2. BAYEZİD KÖPRÜSÜ" },
+    { coords: [41.00874468, 28.97052058], city: "İSTANBUL", name: "GAZİ ATİK ALİ PAŞA CAMİİ" },
+    { coords: [41.01128823, 28.97790439], city: "İSTANBUL", name: "BAB-I ALİ" },
+    { coords: [39.95537662, 26.2493621], city: "ÇANAKKALE", name: "TROYA MÜZESİ" },
+    { coords: [39.95758196, 26.23972952], city: "ÇANAKKALE", name: "TROYA ANTİK KENTİ" },
+    { coords: [39.8938295, 26.19741955], city: "ÇANAKKALE", name: "AKHİLLEUS, HECTOR HEYKELİ" },
+    { coords: [39.99187663, 26.25122473], city: "ÇANAKKALE", name: "KUMKALE ŞEHİTLİĞİ" },
+    { coords: [40.14886455, 26.39863926], city: "ÇANAKKALE", name: "NUSRET MAYIN GEMİSİ" },
+    { coords: [40.15205741, 26.40546166], city: "ÇANAKKALE", name: "TRUVA ATI" },
+    { coords: [40.37706564, 26.71540821], city: "ÇANAKKALE", name: "ARIBURNU ŞEHİTLİĞİ" },
+    { coords: [40.05056412, 26.2202229], city: "ÇANAKKALE", name: "MEÇHUL ASKER ANITI" },
+    { coords: [40.04983502, 26.19408602], city: "ÇANAKKALE", name: "SEDDÜLBAHİR KABRİSTANI" },
+    { coords: [40.0441446, 26.18152595], city: "ÇANAKKALE", name: "ERTUĞRUL TABYASI" },
+    { coords: [40.0751729, 26.18408138], city: "ÇANAKKALE", name: "ZIĞINDERE SAHİL" },
+    { coords: [40.09699175, 26.25345426], city: "ÇANAKKALE", name: "ALÇI TEPE" },
+    { coords: [40.14774988, 26.37949283], city: "ÇANAKKALE", name: "KİLİTBAHİR KALE MÜZESİ" },
+    { coords: [40.17222358, 26.36688982], city: "ÇANAKKALE", name: "SEYİT ONBAŞI HEYKELİ" },
+    { coords: [40.25246451, 26.30827374], city: "ÇANAKKALE", name: "MUSTAFA KEMAL PAŞA'NIN SAATİNİN PARÇALANDIĞI YER" },
+    { coords: [40.25031311, 26.30780818], city: "ÇANAKKALE", name: "CONKBAYIRI" },
+    { coords: [40.23833066, 26.27688543], city: "ÇANAKKALE", name: "ANZAK KOYU YAZITI" },
+    { coords: [40.22901127, 26.29126018], city: "ÇANAKKALE", name: "KANLI SIRT YAZITI" },
+    { coords: [40.24495895, 26.28186922], city: "ÇANAKKALE", name: "ANZAK KOYU" },
+    { coords: [39.53637398, 26.11705383], city: "ÇANAKKALE", name: "APOLLON SMİNTHEİON" },
+    { coords: [39.75169593, 26.15877987], city: "ÇANAKKALE", name: "ALEXANDRİA TROAS ÖREN YERİ" },
+    { coords: [39.4918325, 26.33685063], city: "ÇANAKKALE", name: "ASSOS ÖREN YERİ" },
+    { coords: [39.49013374, 26.33510052], city: "ÇANAKKALE", name: "ASSOS ANTİK KENTİ" },
+    { coords: [39.48815824, 26.33778209], city: "ÇANAKKALE", name: "ASSOS ANTİK TİYATRO" },
+    { coords: [39.5627569, 26.16686263], city: "ÇANAKKALE", name: "MURAT HÜDAVENDİGAR CAMİİ" },
+    { coords: [40.41636421, 27.07012236], city: "ÇANAKKALE", name: "PARİON" }
+      // Diğer tarihi yer verileri...
+    ];
+    const hotels = [
+      { coords: [41.046, 29.001], city: "İSTANBUL", name: "Swissotel The Bosphorus" },
+      { coords: [40.68490755, 30.12684445], city: "KOCAELİ", name: "Maşukiye Otel" },
+      { coords: [40.18376975, 29.06308241], city: "BURSA", name: "Bursa Otel" },
+      { coords: [41.82386012, 27.9649215], city: "KIRKLARELİ", name: "Kırklareli Otel" },
+      { coords: [40.57234492, 29.13990054], city: "YALOVA", name: "Yalova Otel" },
+      
+      { coords: [41.01328497417011, 28.97733547915461], city: "İSTANBUL", name: "My Dream Istanbul Hotel" },
+      { coords: [40.76647532918114, 29.772630421025664], city: "KOCAELİ", name: "Stargate Hotel - İzmit Otel" },
+      { coords: [40.80083470000004, 30.367909367026133], city: "SAKARYA", name: "Sakarya Hotel" },
+      { coords: [41.674514125759046, 26.555320437564674], city: "EDİRNE", name: "Westdoor Hotel" },
+      { coords: [41.74043365441776, 27.218186311013177], city: "KIRKLARELİ", name: "Moda Hotel Kırklareli" },
+      { coords: [40.972650059799555, 27.50208992841017], city: "KIRKLARELİ", name: "DES OTEL" },
+      { coords: [40.15452183596095, 26.4579916559531], city: "EDİRNE", name: "AVEC Hotel" },
+      { coords: [39.585241284527406, 26.891777973926914], city: "BALIKESİR", name: "KAZDAĞLARI ALLIA THERMAL HEALTH & SPA" },
+      { coords: [40.19785035522993, 29.05763599888038], city: "BURSA", name: "Almira Hotel Thermal Spa & Convention Center" },
+      { coords: [40.636181976278436, 29.235103899986807], city: "YALOVA", name: "Crowne Plaza Yalova by IHG" },
+      { coords: [39.90235384737348, 30.03351752431158], city: "BALIKESİR", name: "Grand Çalı Otel" },
+    ];
+
+     // Şehir bilgileri ve linkleri
+    const cityLinks = {
+      "İSTANBUL": "https://tr.wikipedia.org/wiki/%C4%B0stanbul",
+      "EDİRNE": "https://tr.wikipedia.org/wiki/Edirne",
+      "KIRKLARELİ": "https://tr.wikipedia.org/wiki/K%C4%B1rklareli",
+      "TEKİRDAĞ": "https://tr.wikipedia.org/wiki/Tekirda%C4%9F",
+      "ÇANAKKALE": "https://tr.wikipedia.org/wiki/%C3%87anakkale",
+      "BALIKESİR": "https://tr.wikipedia.org/wiki/Bal%C4%B1kesir",
+      "BURSA": "https://tr.wikipedia.org/wiki/Bursa",
+      "YALOVA": "https://tr.wikipedia.org/wiki/Yalova",
+      "KOCAELİ": "https://tr.wikipedia.org/wiki/Kocaeli",
+      "SAKARYA": "https://tr.wikipedia.org/wiki/Sakarya",
+      "BİLECİK": "https://tr.wikipedia.org/wiki/Bilecik"
+    };
+
+    // Video bağlantıları
+    const videoLinks = {
+      "İSTANBUL": "https://drive.google.com/file/d/1HY18jKbOyIMlZVzRqvRCBqEyKcvYkUcQ/view",
+      "EDİRNE": "https://drive.google.com/file/d/1EVbFuSqnBgyltfgEUmhC8P9leeRAwRX5/view",
+      "KIRKLARELİ": "https://drive.google.com/file/d/15M63T96c097teZUlFCGGB0PkXB23tQpS/view",
+      "TEKİRDAĞ": "https://drive.google.com/file/d/1QclXblLpjpzv_FlpqK3SexbYIU3TVlbp/view",
+      "ÇANAKKALE": "https://drive.google.com/file/d/1h8yVbR0T9zIp8bwU8GyArm67eM0sHOoB/view",
+      "BALIKESİR": "https://drive.google.com/file/d/1cgzDC_VNx1EolmWGRU5Vq-0lZTE0fLDb/view",
+      "BURSA": "https://drive.google.com/file/d/1wujFXing9x8JF1Zcdzx9CBfp23btq8eK/view",
+      "YALOVA": "https://drive.google.com/file/d/1AYCUxjxQKJ7xHtTheuW8ota1z9z5KwXN/view",
+      "KOCAELİ": "https://drive.google.com/file/d/1Ppe3aX2QtVoFoQphY7Mwt-JgZdb1HCEI/view",
+      "SAKARYA": "https://drive.google.com/file/d/15ZXrVocySOJeE_Zxpz9WEhH9FRRVtGEX/view",
+      "BİLECİK": "https://drive.google.com/file/d/17kbnbQjWPHtqErny7QF7sHaWARAYu-qV/view?usp=sharing"
+    };
+
+    function createPopupContent(name, city, lat, lng) {
+      return `
+        <strong>${name}</strong><br>
+        <button onclick="showCityInfo('${city}')">Şehir Bilgisi</button>
+        <button onclick="openVideo('${city}')">Sesli Şehir Bilgisi</button>
+        <button onclick="drawRoute(${lat}, ${lng})">Rota</button>
+        <button onclick="openGoogleMaps(${lat}, ${lng})" style="background:#4285F4;color:#fff;border:none;padding:3px 6px;margin-left:5px;border-radius:3px;cursor:pointer;">G. Haritalar</button>
+      `;
+    }
+
+    function addMarkers() {
+      parks.forEach(p => {
+        const marker = L.circleMarker(p.coords, {
+          radius: 8, fillColor: "green", color: "white", weight: 2, fillOpacity: 0.8
+        }).bindPopup(createPopupContent(p.name, p.city, p.coords[0], p.coords[1]));
+        marker.city = p.city;
+        marker.type = "PARK";
+        greenSpacesMarkers.push(marker);
+        marker.addTo(greenSpacesLayer);
+      });
+      beaches.forEach(b => {
+        const marker = L.circleMarker(b.coords, {
+          radius: 8, fillColor: "blue", color: "white", weight: 2, fillOpacity: 0.8
+        }).bindPopup(createPopupContent(b.name, b.city, b.coords[0], b.coords[1]));
+        marker.city = b.city;
+        marker.type = "BEACH";
+        beachesMarkers.push(marker);
+        marker.addTo(beachesLayer);
+      });
+      sites.forEach(s => {
+        const marker = L.circleMarker(s.coords, {
+          radius: 8, fillColor: "red", color: "white", weight: 2, fillOpacity: 0.8
+        }).bindPopup(createPopupContent(s.name, s.city, s.coords[0], s.coords[1]));
+        marker.city = s.city;
+        marker.type = "SITE";
+        historicalMarkers.push(marker);
+        marker.addTo(historicalSitesLayer);
+      });
+      hotels.forEach(h => {
+        const marker = L.circleMarker(h.coords, {
+          radius: 8, fillColor: "yellow", color: "white", weight: 2, fillOpacity: 0.8
+        }).bindPopup(createPopupContent(h.name, h.city, h.coords[0], h.coords[1]));
+        marker.city = h.city;
+        marker.type = "HOTEL";
+        hotelsMarkers.push(marker);
+        marker.addTo(hotelsLayer);
+      });
+    }
+    addMarkers();
+
+    let userLocationMarker = null;
+    let routingControl = null;
+    let routeTargetCoords = null;
+    let markedLocationMarker = null;
+
+    function applyFilters() {
+      const selectedCity = document.getElementById("city-filter").value;
+      const selectedType = document.getElementById("layer-filter").value;
+
+      function filterMarkers(markersArray, layerGroup) {
+        layerGroup.clearLayers();
+        markersArray.forEach(marker => {
+          const cityMatch = (selectedCity === "ALL" || marker.city === selectedCity);
+          const typeMatch = (selectedType === "ALL" || marker.type === selectedType);
+          if (cityMatch && typeMatch) {
+            marker.addTo(layerGroup);
+          }
+        });
+      }
+
+      filterMarkers(greenSpacesMarkers, greenSpacesLayer);
+      filterMarkers(beachesMarkers, beachesLayer);
+      filterMarkers(historicalMarkers, historicalSitesLayer);
+      filterMarkers(hotelsMarkers, hotelsLayer);
+    }
+
+    function showCityInfo(city) {
+      const url = cityLinks[city];
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        alert(city + " için bilgi bulunamadı.");
+      }
+    }
+    function openVideo(city) {
+      const videoUrl = videoLinks[city];
+      if (videoUrl) {
+        window.open(videoUrl, '_blank');
+      } else {
+        alert(city + " için video bulunamadı.");
+      }
+    }
+    function openGoogleMaps(lat, lng) {
+      const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+      window.open(url, "_blank");
+    }
+
+    function drawRoute(destLat, destLng) {
+      let startLatLng = null;
+
+      if (markedLocationMarker) {
+        startLatLng = markedLocationMarker.getLatLng();
+      } else if (userLocationMarker) {
+        startLatLng = userLocationMarker.getLatLng();
+      }
+
+      if (!startLatLng) {
+        alert("Önce konumunuzu işaretleyin veya anlık konumunuzu gösterin.");
+        return;
+      }
+
+      if (routingControl) {
+        routingControl.remove();
+      }
+
+      routingControl = L.Routing.control({
+        waypoints: [
+          L.latLng(startLatLng.lat, startLatLng.lng),
+          L.latLng(destLat, destLng)
+        ],
+        routeWhileDragging: true
+      }).addTo(map);
+
+      routeTargetCoords = {lat: destLat, lng: destLng};
+      openRoutePanel();
+    }
+
+    function clearRoute() {
+      if (routingControl) {
+        routingControl.remove();
+        routingControl = null;
+        routeTargetCoords = null;
+      }
+    }
+
+    function showUserLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(pos => {
+          const coords = [pos.coords.latitude, pos.coords.longitude];
+          if (userLocationMarker) {
+            userLocationMarker.setLatLng(coords);
+          } else {
+            userLocationMarker = L.marker(coords).addTo(map).bindPopup("Anlık Konumunuz").openPopup();
+          }
+          map.setView(coords, 13);
+          listNearestPlaces();
+        }, err => alert("Konum alınamadı: " + err.message));
+      } else {
+        alert("Tarayıcınız konum servislerini desteklemiyor.");
+      }
+    }
+
+    const hamburgerLeft = document.getElementById("hamburger-left");
+    const filterPanel = document.getElementById("filter-panel");
+    hamburgerLeft.addEventListener("click", () => {
+      togglePanel(filterPanel, hamburgerLeft);
+    });
+    hamburgerLeft.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        togglePanel(filterPanel, hamburgerLeft);
+      }
+    });
+
+    const hamburgerRight = document.getElementById("hamburger-right");
+    const locationPanel = document.getElementById("location-panel");
+    hamburgerRight.addEventListener("click", () => {
+      togglePanel(locationPanel, hamburgerRight);
+    });
+    hamburgerRight.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        togglePanel(locationPanel, hamburgerRight);
+      }
+    });
+
+    function togglePanel(panel, button) {
+      const isOpen = panel.classList.toggle("open");
+      panel.setAttribute("aria-hidden", !isOpen);
+      button.setAttribute("aria-pressed", isOpen);
+      adjustMapBounds();
+    }
+
+    function adjustMapBounds() {
+      let topOffset = filterPanel.classList.contains("open") ? 140 : 0;
+      let bottomOffset = locationPanel.classList.contains("open") ? 180 : 0;
+      map.getContainer().style.top = topOffset + "px";
+      map.getContainer().style.bottom = bottomOffset + "px";
+      map.invalidateSize();
+    }
+
+    document.getElementById("location-button-left").addEventListener("click", showUserLocation);
+    document.getElementById("location-button-right").addEventListener("click", showUserLocation);
+    document.getElementById("clear-route-button").addEventListener("click", () => {
+      clearRoute();
+      closeRoutePanel();
+    });
+
+    document.getElementById("city-filter").addEventListener("change", applyFilters);
+    document.getElementById("layer-filter").addEventListener("change", applyFilters);
+
+    document.getElementById("info-icon").addEventListener("click", () => {
+      const text = "Hoş geldiniz. Marmara bölgesinde bulunan on bir ilin turistik yerlerini sizin için bir araya getirdik. Üst panelden il ve kategori seçimi yapabilir, alt panelden konumunuzu gösterip en yakın turistik yerleri görebilirsiniz.";
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "tr-TR";
+      speechSynthesis.speak(utterance);
+    });
+
+    const placesList = document.getElementById("places-list");
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      function toRad(x) { return x * Math.PI / 180; }
+      const R = 6371;
+      const dLat = toRad(lat2 - lat1);
+      const dLon = toRad(lon2 - lon1);
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+    function listNearestPlaces() {
+      if (markedLocationMarker) {
+        const pos = markedLocationMarker.getLatLng();
+        listNearestPlacesFromCoords(pos.lat, pos.lng);
+      } else if (userLocationMarker) {
+        const pos = userLocationMarker.getLatLng();
+        listNearestPlacesFromCoords(pos.lat, pos.lng);
+      } else {
+        placesList.innerHTML = "<p>Önce konumunuzu gösterin veya işaretleyin.</p>";
+      }
+    }
+    function listNearestPlacesFromCoords(lat, lng) {
+      const allPlaces = [...parks, ...beaches, ...sites, ...hotels];
+      const placesWithDist = allPlaces.map(p => {
+        const dist = haversineDistance(lat, lng, p.coords[0], p.coords[1]);
+        return {...p, distance: dist};
+      });
+      placesWithDist.sort((a,b) => a.distance - b.distance);
+      const nearest = placesWithDist.slice(0,10);
+      placesList.innerHTML = "";
+      nearest.forEach(place => {
+        const div = document.createElement("div");
+        div.className = "place-item";
+        div.innerHTML = `
+          <div class="place-name">${place.name}</div>
+          <div class="distance">${place.distance.toFixed(2)} km</div>
+          <button class="route-button" aria-label="${place.name} için rota oluştur">Rota</button>
+          <button class="google-maps-button" aria-label="${place.name} Google Haritalar'da aç">G. Haritalar</button>
+        `;
+        div.querySelector(".route-button").addEventListener("click", () => {
+          drawRoute(place.coords[0], place.coords[1]);
+          openRoutePanel();
+        });
+        div.querySelector(".google-maps-button").addEventListener("click", () => {
+          openGoogleMaps(place.coords[0], place.coords[1]);
+        });
+        placesList.appendChild(div);
+      });
+    }
+
+    const routePanel = document.getElementById("route-panel");
+    const closeRouteBtn = document.getElementById("close-route");
+    const openGoogleMapsRouteBtn = document.getElementById("open-google-maps-route");
+
+    function openRoutePanel() {
+      routePanel.classList.add("open");
+      routePanel.setAttribute("aria-hidden", "false");
+    }
+    function closeRoutePanel() {
+      routePanel.classList.remove("open");
+      routePanel.setAttribute("aria-hidden", "true");
+    }
+    closeRouteBtn.addEventListener("click", () => {
+      closeRoutePanel();
+      clearRoute();
+    });
+
+    openGoogleMapsRouteBtn.addEventListener("click", () => {
+      if (!routeTargetCoords) {
+        alert("Önce rota oluşturun.");
+        return;
+      }
+      let origin;
+      if (markedLocationMarker) {
+        const pos = markedLocationMarker.getLatLng();
+        origin = `${pos.lat},${pos.lng}`;
+      } else if (userLocationMarker) {
+        const pos = userLocationMarker.getLatLng();
+        origin = `${pos.lat},${pos.lng}`;
+      } else {
+        alert("Önce konumunuzu işaretleyin veya gösterin.");
+        return;
+      }
+      const destination = `${routeTargetCoords.lat},${routeTargetCoords.lng}`;
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
+      window.open(url, "_blank");
+    });
+
+    // Konum İşaretle Özelliği
+    let markMode = false;
+
+    document.getElementById("mark-location-button").addEventListener("click", () => {
+      markMode = !markMode;
+      if (markMode) {
+        alert("Haritaya tıklayarak konum işaretleyebilirsiniz. İşaretleme modunu iptal etmek için tekrar butona basın.");
+        map.getContainer().style.cursor = 'crosshair';
+      } else {
+        map.getContainer().style.cursor = '';
+      }
+    });
+
+    map.on('click', function(e) {
+      if (!markMode) return;
+
+      if (markedLocationMarker) {
+        map.removeLayer(markedLocationMarker);
+      }
+      markedLocationMarker = L.marker(e.latlng).addTo(map).bindPopup("İşaretlenen Konum").openPopup();
+
+      listNearestPlacesFromCoords(e.latlng.lat, e.latlng.lng);
+
+      markMode = false;
+      map.getContainer().style.cursor = '';
+    });
+
+    applyFilters();
+    adjustMapBounds();
+  </script>
+</body>
+</html>
+<!-- partial -->
+  
+</body>
+</html>
