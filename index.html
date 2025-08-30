@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <style>
     html, body {
       height: 100%; margin: 0; padding: 0; font-family: Arial, sans-serif; overflow: hidden;
@@ -222,6 +224,33 @@
       pointer-events: none !important;
       white-space: nowrap !important;
     }
+    /* Marker cluster renkli ikonlar için */
+    .marker-cluster-PARK {
+      background-color: rgba(0, 128, 0, 0.6) !important;
+    }
+    .marker-cluster-PARK div {
+      background-color: rgba(0, 128, 0, 0.8) !important;
+    }
+    .marker-cluster-BEACH {
+      background-color: rgba(0, 0, 255, 0.6) !important;
+    }
+    .marker-cluster-BEACH div {
+      background-color: rgba(0, 0, 255, 0.8) !important;
+    }
+    .marker-cluster-SITE {
+      background-color: rgba(255, 0, 0, 0.6) !important;
+    }
+    .marker-cluster-SITE div {
+      background-color: rgba(255, 0, 0, 0.8) !important;
+    }
+    .marker-cluster-HOTEL {
+      background-color: rgba(255, 255, 0, 0.6) !important;
+      color: black !important;
+    }
+    .marker-cluster-HOTEL div {
+      background-color: rgba(255, 255, 0, 0.8) !important;
+      color: black !important;
+    }
   </style>
 </head>
 <body>
@@ -279,6 +308,7 @@
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script>
     const map = L.map('map', { preferCanvas: true }).setView([40.65, 29.27], 10);
 
@@ -287,10 +317,31 @@
       maxZoom: 19
     }).addTo(map);
 
-    const greenSpacesLayer = L.layerGroup().addTo(map);
-    const beachesLayer = L.layerGroup().addTo(map);
-    const historicalSitesLayer = L.layerGroup().addTo(map);
-    const hotelsLayer = L.layerGroup().addTo(map);
+    // Kategori renkleri ve cluster sınıf isimleri
+    const clusterColors = {
+      PARK: 'marker-cluster-PARK',
+      BEACH: 'marker-cluster-BEACH',
+      SITE: 'marker-cluster-SITE',
+      HOTEL: 'marker-cluster-HOTEL'
+    };
+
+    // Marker cluster grupları kategoriye göre, renkli ikonlu
+    function createClusterGroup(category) {
+      return L.markerClusterGroup({
+        iconCreateFunction: function(cluster) {
+          return L.divIcon({
+            html: '<div><span>' + cluster.getChildCount() + '</span></div>',
+            className: 'marker-cluster ' + clusterColors[category],
+            iconSize: L.point(40, 40)
+          });
+        }
+      });
+    }
+
+    const greenSpacesCluster = createClusterGroup('PARK').addTo(map);
+    const beachesCluster = createClusterGroup('BEACH').addTo(map);
+    const historicalSitesCluster = createClusterGroup('SITE').addTo(map);
+    const hotelsCluster = createClusterGroup('HOTEL').addTo(map);
 
     const greenSpacesMarkers = [];
     const beachesMarkers = [];
@@ -1456,8 +1507,6 @@
       { coords: [39.90235384737348, 30.03351752431158], city: "BALIKESİR", name: "Grand Çalı Otel" },
     ];
 
-
-    // Daire şeklinde renkli SVG ikonlar
     function createColoredIcon(color) {
       return L.divIcon({
         className: 'custom-div-icon',
@@ -1494,7 +1543,7 @@
         marker.city = p.city;
         marker.type = "PARK";
         greenSpacesMarkers.push(marker);
-        marker.addTo(greenSpacesLayer);
+        greenSpacesCluster.addLayer(marker);
       });
       beaches.forEach(b => {
         const marker = L.marker(b.coords, { icon: icons.BEACH })
@@ -1502,7 +1551,7 @@
         marker.city = b.city;
         marker.type = "BEACH";
         beachesMarkers.push(marker);
-        marker.addTo(beachesLayer);
+        beachesCluster.addLayer(marker);
       });
       sites.forEach(s => {
         const marker = L.marker(s.coords, { icon: icons.SITE })
@@ -1510,7 +1559,7 @@
         marker.city = s.city;
         marker.type = "SITE";
         historicalMarkers.push(marker);
-        marker.addTo(historicalSitesLayer);
+        historicalSitesCluster.addLayer(marker);
       });
       hotels.forEach(h => {
         const marker = L.marker(h.coords, { icon: icons.HOTEL })
@@ -1518,7 +1567,7 @@
         marker.city = h.city;
         marker.type = "HOTEL";
         hotelsMarkers.push(marker);
-        marker.addTo(hotelsLayer);
+        hotelsCluster.addLayer(marker);
       });
     }
     addMarkers();
@@ -1569,33 +1618,32 @@
       const selectedCity = document.getElementById("city-filter").value;
       const selectedType = document.getElementById("layer-filter").value;
 
-      function filterMarkers(markersArray, layerGroup) {
-        layerGroup.clearLayers();
+      greenSpacesCluster.clearLayers();
+      beachesCluster.clearLayers();
+      historicalSitesCluster.clearLayers();
+      hotelsCluster.clearLayers();
 
-        const showAll = (selectedCity === "ALL" && selectedType === "ALL");
-
+      function filterAndAdd(markersArray, clusterGroup) {
         markersArray.forEach(marker => {
           const cityMatch = (selectedCity === "ALL" || marker.city === selectedCity);
           const typeMatch = (selectedType === "ALL" || marker.type === selectedType);
 
-          if (showAll) {
-            marker.addTo(layerGroup);
-          } else if (cityMatch && typeMatch) {
-            marker.addTo(layerGroup);
+          if (cityMatch && typeMatch) {
+            clusterGroup.addLayer(marker);
           }
         });
       }
 
-      filterMarkers(greenSpacesMarkers, greenSpacesLayer);
-      filterMarkers(beachesMarkers, beachesLayer);
-      filterMarkers(historicalMarkers, historicalSitesLayer);
-      filterMarkers(hotelsMarkers, hotelsLayer);
+      filterAndAdd(greenSpacesMarkers, greenSpacesCluster);
+      filterAndAdd(beachesMarkers, beachesCluster);
+      filterAndAdd(historicalMarkers, historicalSitesCluster);
+      filterAndAdd(hotelsMarkers, hotelsCluster);
 
       const allVisibleMarkers = [
-        ...greenSpacesMarkers.filter(m => map.hasLayer(m)),
-        ...beachesMarkers.filter(m => map.hasLayer(m)),
-        ...historicalMarkers.filter(m => map.hasLayer(m)),
-        ...hotelsMarkers.filter(m => map.hasLayer(m))
+        ...greenSpacesMarkers.filter(m => greenSpacesCluster.hasLayer(m)),
+        ...beachesMarkers.filter(m => beachesCluster.hasLayer(m)),
+        ...historicalMarkers.filter(m => historicalSitesCluster.hasLayer(m)),
+        ...hotelsMarkers.filter(m => hotelsCluster.hasLayer(m))
       ];
 
       if (allVisibleMarkers.length > 0) {
