@@ -280,7 +280,7 @@
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
   <script>
-    const map = L.map('map').setView([40.65, 29.27], 7);
+    const map = L.map('map', { preferCanvas: true }).setView([40.65, 29.27], 10);
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
@@ -1456,6 +1456,27 @@
       { coords: [39.90235384737348, 30.03351752431158], city: "BALIKESİR", name: "Grand Çalı Otel" },
     ];
 
+
+    // Daire şeklinde renkli SVG ikonlar
+    function createColoredIcon(color) {
+      return L.divIcon({
+        className: 'custom-div-icon',
+        html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" >
+          <circle cx="12" cy="12" r="8" />
+        </svg>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
+      });
+    }
+
+    const icons = {
+      PARK: createColoredIcon('green'),
+      BEACH: createColoredIcon('blue'),
+      SITE: createColoredIcon('red'),
+      HOTEL: createColoredIcon('yellow')
+    };
+
     function createPopupContent(name, city, lat, lng) {
       return `
         <strong>${name}</strong><br>
@@ -1468,36 +1489,32 @@
 
     function addMarkers() {
       parks.forEach(p => {
-        const marker = L.circleMarker(p.coords, {
-          radius: 8, fillColor: "green", color: "white", weight: 2, fillOpacity: 0.8
-        }).bindPopup(createPopupContent(p.name, p.city, p.coords[0], p.coords[1]));
+        const marker = L.marker(p.coords, { icon: icons.PARK })
+          .bindPopup(createPopupContent(p.name, p.city, p.coords[0], p.coords[1]));
         marker.city = p.city;
         marker.type = "PARK";
         greenSpacesMarkers.push(marker);
         marker.addTo(greenSpacesLayer);
       });
       beaches.forEach(b => {
-        const marker = L.circleMarker(b.coords, {
-          radius: 8, fillColor: "blue", color: "white", weight: 2, fillOpacity: 0.8
-        }).bindPopup(createPopupContent(b.name, b.city, b.coords[0], b.coords[1]));
+        const marker = L.marker(b.coords, { icon: icons.BEACH })
+          .bindPopup(createPopupContent(b.name, b.city, b.coords[0], b.coords[1]));
         marker.city = b.city;
         marker.type = "BEACH";
         beachesMarkers.push(marker);
         marker.addTo(beachesLayer);
       });
       sites.forEach(s => {
-        const marker = L.circleMarker(s.coords, {
-          radius: 8, fillColor: "red", color: "white", weight: 2, fillOpacity: 0.8
-        }).bindPopup(createPopupContent(s.name, s.city, s.coords[0], s.coords[1]));
+        const marker = L.marker(s.coords, { icon: icons.SITE })
+          .bindPopup(createPopupContent(s.name, s.city, s.coords[0], s.coords[1]));
         marker.city = s.city;
         marker.type = "SITE";
         historicalMarkers.push(marker);
         marker.addTo(historicalSitesLayer);
       });
       hotels.forEach(h => {
-        const marker = L.circleMarker(h.coords, {
-          radius: 8, fillColor: "yellow", color: "white", weight: 2, fillOpacity: 0.8
-        }).bindPopup(createPopupContent(h.name, h.city, h.coords[0], h.coords[1]));
+        const marker = L.marker(h.coords, { icon: icons.HOTEL })
+          .bindPopup(createPopupContent(h.name, h.city, h.coords[0], h.coords[1]));
         marker.city = h.city;
         marker.type = "HOTEL";
         hotelsMarkers.push(marker);
@@ -1506,14 +1523,16 @@
     }
     addMarkers();
 
-    // Zoom 13+ olduğunda sadece görünür alan içindeki markerların isimlerini göster
     let openTooltips = [];
 
     function showLabels() {
       closeLabels();
-      const bounds = map.getBounds();
+      const topLeft = map.containerPointToLatLng([0, 0]);
+      const bottomRight = map.containerPointToLatLng([window.innerWidth, window.innerHeight]);
+      const screenBounds = L.latLngBounds(topLeft, bottomRight);
+
       [...greenSpacesMarkers, ...beachesMarkers, ...historicalMarkers, ...hotelsMarkers].forEach(marker => {
-        if (bounds.contains(marker.getLatLng())) {
+        if (screenBounds.contains(marker.getLatLng())) {
           const contentMatch = marker.getPopup().getContent().match(/<strong>(.*?)<\/strong>/);
           const labelText = contentMatch ? contentMatch[1] : "";
           const tooltip = L.tooltip({
@@ -1544,11 +1563,7 @@
     }
     map.on('zoomend', updateLabels);
     map.on('moveend', updateLabels);
-
-    // Başlangıçta isimler kapalı
     closeLabels();
-
-    // Filtre ve panel toggle fonksiyonları
 
     function applyFilters() {
       const selectedCity = document.getElementById("city-filter").value;
@@ -1556,10 +1571,16 @@
 
       function filterMarkers(markersArray, layerGroup) {
         layerGroup.clearLayers();
+
+        const showAll = (selectedCity === "ALL" && selectedType === "ALL");
+
         markersArray.forEach(marker => {
           const cityMatch = (selectedCity === "ALL" || marker.city === selectedCity);
           const typeMatch = (selectedType === "ALL" || marker.type === selectedType);
-          if (cityMatch && typeMatch) {
+
+          if (showAll) {
+            marker.addTo(layerGroup);
+          } else if (cityMatch && typeMatch) {
             marker.addTo(layerGroup);
           }
         });
@@ -1569,6 +1590,18 @@
       filterMarkers(beachesMarkers, beachesLayer);
       filterMarkers(historicalMarkers, historicalSitesLayer);
       filterMarkers(hotelsMarkers, hotelsLayer);
+
+      const allVisibleMarkers = [
+        ...greenSpacesMarkers.filter(m => map.hasLayer(m)),
+        ...beachesMarkers.filter(m => map.hasLayer(m)),
+        ...historicalMarkers.filter(m => map.hasLayer(m)),
+        ...hotelsMarkers.filter(m => map.hasLayer(m))
+      ];
+
+      if (allVisibleMarkers.length > 0) {
+        const group = L.featureGroup(allVisibleMarkers);
+        map.fitBounds(group.getBounds(), { padding: [5, 5] });
+      }
     }
 
     function showCityInfo(city) {
@@ -1852,6 +1885,7 @@
       map.getContainer().style.cursor = '';
     });
 
+    // İlk filtre ve harita ayarı
     applyFilters();
     adjustMapBounds();
   </script>
