@@ -1,18 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" >
-<head>
-  <meta charset="UTF-8">
-  <title>Marmaradestinasyonlar.12.7</title>
-  
-
-</head>
-<body>
-<!-- partial:index.partial.html -->
-<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Marmara Haritası - Tam Kod (Kısa Örnek Veri)</title>
+  <title>Marmara Bölgesi Turistik Yerler Haritası</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
@@ -54,11 +44,12 @@
     }
     #location-panel {
       bottom: 0;
-      height: 180px;
+      height: 320px;
       flex-direction: column;
       overflow-y: auto;
       transform: translateY(100%);
       transition: transform 0.3s ease;
+      position: absolute;
     }
     #location-panel.open {
       transform: translateY(0);
@@ -71,28 +62,34 @@
       padding-top: 8px;
       font-size: 13px;
       margin-top: 0;
+      max-height: 320px;
     }
     .place-item {
       border-bottom: 1px solid #eee;
-      padding: 6px 0;
+      padding: 4px 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      min-height: 40px;
     }
     .place-name {
       font-weight: 600;
       flex: 1;
       margin-right: 8px;
       font-size: 13px;
+      white-space: normal;
+      line-height: 1.2;
     }
     .distance {
       font-size: 11px;
       color: #666;
       margin-right: 8px;
       white-space: nowrap;
+      min-width: 60px;
+      text-align: right;
     }
     .route-button, .google-maps-button {
-      background-color: #28a745;
+      background-color: #007bff;
       border: none;
       color: white;
       padding: 4px 8px;
@@ -101,9 +98,10 @@
       font-size: 12px;
       margin-left: 5px;
       white-space: nowrap;
+      min-width: 70px;
     }
     .route-button:hover {
-      background-color: #1e7e34;
+      background-color: #0056b3;
     }
     .google-maps-button {
       background-color: #4285F4;
@@ -112,10 +110,8 @@
       background-color: #3367D6;
     }
     #route-panel {
-      position: absolute;
-      bottom: 180px;
-      right: 10px;
-      width: 320px;
+      position: relative;
+      width: 100%;
       max-height: 40%;
       background: white;
       box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -125,6 +121,7 @@
       font-size: 14px;
       border-radius: 6px;
       display: none;
+      margin-bottom: 10px;
     }
     #route-panel.open {
       display: block;
@@ -134,7 +131,7 @@
     }
     #hamburger-left, #hamburger-right {
       position: fixed;
-      top: 50%;
+      top: 30%;
       transform: translateY(-50%);
       z-index: 1300;
       font-size: 32px;
@@ -152,7 +149,7 @@
       left: 10px;
     }
     #hamburger-right {
-      right: 10px;
+      right: 20px;
     }
     #filter-panel label, #filter-panel select, #filter-panel button {
       font-size: 14px;
@@ -195,7 +192,7 @@
     }
     #info-icon {
       position: fixed;
-      bottom: 200px;
+      bottom: 350px;
       right: 20px;
       background-color: rgba(255, 255, 255, 0.9);
       border: 1px solid #ccc;
@@ -214,11 +211,22 @@
     #info-icon:hover {
       background-color: rgba(255, 255, 255, 1);
     }
+    /* Tooltip yazı stili */
+    .location-label {
+      font-size: 10px !important;
+      font-weight: normal !important;
+      color: #333 !important;
+      background: rgba(255, 255, 255, 0.8) !important;
+      padding: 1px 3px !important;
+      border-radius: 3px !important;
+      pointer-events: none !important;
+      white-space: nowrap !important;
+    }
   </style>
 </head>
 <body>
   <div id="hamburger-left" title="Filtre Panelini Aç/Kapa" role="button" tabindex="0" aria-pressed="false" aria-label="Filtre panelini aç veya kapa">☰</div>
-  <div id="hamburger-right" title="Konum Panelini Aç/Kapa" role="button" tabindex="0" aria-pressed="false" aria-label="Konum panelini aç veya kapa">☰</div>
+  <div id="hamburger-right" title="Konum Panelini Aç/Kapa" role="button" tabindex="0" aria-pressed="false" aria-label="Konum panelini aç veya kapa">📍</div>
 
   <div id="filter-panel" aria-label="Filtre Paneli" role="region" aria-hidden="true">
     <label for="city-filter">İl Seç:</label>
@@ -254,14 +262,14 @@
     <button id="location-button-right" aria-label="Konumumu göster">Konumumu Göster</button>
     <button id="mark-location-button" aria-label="Konum işaretle">Konum İşaretle</button>
     <div id="places-list" aria-live="polite" aria-relevant="additions"></div>
-  </div>
 
-  <div id="route-panel" aria-label="Rota Bilgileri" role="region" aria-hidden="true">
-    <h3>Rota Bilgileri</h3>
-    <div id="route-details"></div>
-    <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end;">
-      <button id="open-google-maps-route" style="padding:5px 10px;cursor:pointer;background:#4285F4;color:#fff;border:none;border-radius:4px;">Google Haritalar'da Aç</button>
-      <button id="close-route" style="padding:5px 10px;">Rota Panelini Kapat</button>
+    <div id="route-panel" aria-label="Rota Bilgileri" role="region" aria-hidden="true">
+      <h3>Rota Bilgileri</h3>
+      <div id="route-details"></div>
+      <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end;">
+        <button id="open-google-maps-route" style="padding:5px 10px;cursor:pointer;background:#4285F4;color:#fff;border:none;border-radius:4px;">Google Haritalar'da Aç</button>
+        <button id="close-route" style="padding:5px 10px;">Rota Panelini Kapat</button>
+      </div>
     </div>
   </div>
 
@@ -289,8 +297,8 @@
     const historicalMarkers = [];
     const hotelsMarkers = [];
 
-    // Örnek konumlar (her kategoriden 5'er)
-    const parks = [
+    // *** KONUM VERİLERİNİZİ BURAYA YERLEŞTİRİN ***
+   const parks = [
       { coords: [40.973822553266200, 28.783344683967600], city: "İSTANBUL", name: "FLORYA ATATÜRK DENİZ KÖŞKÜ" },
 { coords: [41.110609287791400, 29.204447267036800], city: "İSTANBUL", name: "POLONEZKÖY TABİAT PARKI" },
 { coords: [41.079210346182200, 29.067327767034900], city: "İSTANBUL", name: "KÜÇÜKSU MİLLET PARKI" },
@@ -367,7 +375,6 @@
 { coords: [41.029187917874200, 28.949478831500700], city: "İSTANBUL", name: "FENER RUM ERKEK LİSESİ" },
 { coords: [40.848957740016800, 29.123261595857900], city: "İSTANBUL", name: "BÜYÜKADA MİLLİ PARKI" },
 { coords: [40.860722632352100, 29.111199440164400], city: "İSTANBUL", name: "DİLBURNU TABİAT PARKI" },
-{ coords: [41.007219225089800, 28.978241823405900], city: "İSTANBUL", name: "SULTAN AHMET PARKI" },
 { coords: [40.975102917799800, 28.879559035518100], city: "İSTANBUL", name: "BAKIRKÖY SAHİL PARKI" },
 { coords: [40.986263054797800, 28.912155117716400], city: "İSTANBUL", name: "ZEYTİNBURNU SAHİL" },
 { coords: [40.68490755, 30.12684445], city: "KOCAELİ", name: "MAŞUKİYE ŞELALESİ" },
@@ -987,7 +994,6 @@
     { coords: [40.18290852, 29.05710829], city: "BURSA", name: "ABDURRAHMAN BİSTANİ TÜRBESİ" },
     { coords: [40.18235005, 29.01672091], city: "BURSA", name: "İNKAYA ÇINARI" },
     { coords: [40.18135809, 29.07489415], city: "BURSA", name: "YEŞİL TÜRBE" },
-    { coords: [40.18137505, 29.07363712], city: "BURSA", name: "TÜRK VE İSLAM ESERLERİ MÜZESİ" },
     { coords: [40.18167862, 29.07368362], city: "BURSA", name: "YEŞİL / SULTANİYE MEDRESESİ" },
     { coords: [40.18130361, 29.07710749], city: "BURSA", name: "BAYEZİD PAŞA MEDRESESİ KÜLTÜR VE SANAT MERKEZİ" },
     { coords: [40.18116215, 29.0802034], city: "BURSA", name: "HOCA MUSLİHUDDİN EFENDİ MEZARI" },
@@ -1235,7 +1241,6 @@
     { coords: [41.03916427, 29.00044867], city: "İSTANBUL", name: "DOLMABAHÇE SARAYI" },
     { coords: [41.01066858, 28.96804664], city: "İSTANBUL", name: "KAPALIÇARŞI" },
     { coords: [41.02113782, 29.00412453], city: "İSTANBUL", name: "KIZ KULESİ" },
-    { coords: [41.00835159, 28.97783508], city: "İSTANBUL", name: "YEREBATAN SARNICI" },
     { coords: [40.97382255, 28.78334468], city: "İSTANBUL", name: "FLORYA ATATÜRK DENİZ KÖŞKÜ" },
     { coords: [41.01168547, 28.98134122], city: "İSTANBUL", name: "İSTANBUL ARKEOLOJİ MÜZESİ" },
     { coords: [41.08493444, 29.05670204], city: "İSTANBUL", name: "RUMELİ HİSARI" },
@@ -1247,6 +1252,71 @@
     { coords: [41.04792247, 28.93384017], city: "İSTANBUL", name: "EYÜP SULTAN CAMİİ" },
     { coords: [41.00869391, 28.98101396], city: "İSTANBUL", name: "HALI MÜZESİ" },
     { coords: [41.05002077, 29.011557], city: "İSTANBUL", name: "YILDIZ SARAYI" },
+      //istanbul-ek konumlar
+         { coords: [41.00395442360572, 28.98192891946002], city: "İSTANBUL", name: "AHIRKAPI" },
+      { coords: [41.014496526657936, 28.985469228429892], city: "İSTANBUL", name: "GOTLAR SÜTUNU" },
+      { coords: [41.00738723600649, 28.972388895380764], city: "İSTANBUL", name: "ŞEREFİYE SARNICI" },
+      { coords: [41.00622101093878, 28.974714091762152], city: "İSTANBUL", name: "TÜRK VE İSLAM ESERLERİ MÜZESİ" },
+      { coords: [41.00564911746569, 28.975072709871522], city: "İSTANBUL", name: "YILANLI SÜTUN" },
+      { coords: [41.00540742289454, 28.974825359752323], city: "İSTANBUL", name: "ÖRME DİKİLİTAŞ" },
+      { coords: [41.00590032212399, 28.97537166751064], city: "İSTANBUL", name: "THEODOSİUS DİKİLİTAŞI" },
+      { coords: [41.00967303818503, 28.979268611414586], city: "İSTANBUL", name: "CAFERAĞA MEDRESESİ" },
+      { coords: [41.00463304006794, 28.968888241691257], city: "İSTANBUL", name: "KADIRGA PARKI" },
+      { coords: [41.00493598936488, 28.968845392590595], city: "İSTANBUL", name: "AYŞEHATUN NAMAZGAH ÇEŞMESİ" },
+      { coords: [41.01118443158325, 28.978046363215448], city: "İSTANBUL", name: "PAŞA KAPISI" },
+      { coords: [41.004124702497776, 28.974501253172086], city: "İSTANBUL", name: "RÜSTEM PAŞA ÇEŞMESİ" },
+      { coords: [41.00356487508738, 28.972437338910506], city: "İSTANBUL", name: "RÜSTEM AĞA ÇARDAKLI HAMAM ÇEŞMESİ" },
+      { coords: [41.010345195808924, 28.970356205526187], city: "İSTANBUL", name: "NURUOSMANİYE CAMİİ" },
+      { coords: [41.00488391933281, 28.934871761350582], city: "İSTANBUL", name: "HEKİMOĞLU ALİ PAŞA KÜLLİYESİ KAPISI" },
+      { coords: [40.99309612632376, 28.922605858641262], city: "İSTANBUL", name: "ALTIN KAPI" },
+      { coords: [40.99399158027449, 28.92215025574774], city: "İSTANBUL", name: "YEDİKULE KAPISI" },
+      { coords: [41.00017454147391, 28.919333297967494], city: "İSTANBUL", name: "BELGRAD KAPISI" },
+      { coords: [41.00002954105625, 28.919564066788176], city: "İSTANBUL", name: "BELGRADKAPI ANITI" },
+      { coords: [41.02159510627759, 28.926523369752967], city: "İSTANBUL", name: "TOPKAPI SUR KAPISI" },
+      { coords: [41.026562337440225, 28.931812422696822], city: "İSTANBUL", name: "SULUKULE" },
+      { coords: [41.03020951832602, 28.935392209345256], city: "İSTANBUL", name: "EDİRNEKAPI-CHARISIUS KAPISI" },
+      { coords: [41.03266176019084, 28.93877649054101], city: "İSTANBUL", name: "KERKOPORTA KAPI" },
+      { coords: [41.03026580893202, 28.934683020055605], city: "İSTANBUL", name: "KASAPBAŞI HASAN EFENDİ ÇEŞMESİ" },
+      { coords: [41.03644032584258, 28.939481826051566], city: "İSTANBUL", name: "EĞRİKAPI" },
+      { coords: [41.03651277012042, 28.939369657408125], city: "İSTANBUL", name: "HACETİ HAFİR TÜRBESİ" },
+      { coords: [41.036400889665146, 28.939434068526637], city: "İSTANBUL", name: "KESİKBAŞ TÜRBESİ" },
+      { coords: [41.03763943769124, 28.942828199272775], city: "İSTANBUL", name: "EBUZER GIFARİ TÜRBESİ" },
+      { coords: [41.03755752248155, 28.942996829653413], city: "İSTANBUL", name: "ÇINARLI ÇEŞME" },
+      { coords: [41.05571963007797, 28.932295577049036], city: "İSTANBUL", name: "HÜSAMEDDİN ALİ İDRİS-İ BİTLİSİ TÜRBESİ" },
+      { coords: [41.053481603613854, 28.93582188906981], city: "İSTANBUL", name: "ŞAH SULTAN CAMİİ" },
+      { coords: [41.03125346199036, 28.939180686436927], city: "İSTANBUL", name: "KARİYE CAMİİ" },
+      { coords: [41.031358743279284, 28.939071246875127], city: "İSTANBUL", name: "EBU SAİD EL-HUDRİ TÜRBESİ" },
+      { coords: [41.03135454578581, 28.93868143952542], city: "İSTANBUL", name: "TARİHİ ÇEŞME" },
+      { coords: [41.03046954762772, 28.939747297991737], city: "İSTANBUL", name: "KARİYE ŞEHİR PARKI" },
+      { coords: [41.035154056794084, 28.939872309017087], city: "İSTANBUL", name: "HZ. ŞUBE TÜRBESİ" },
+      { coords: [41.035403204401995, 28.939926108588622], city: "İSTANBUL", name: "AVCIBAŞI MEHMET BEY KABRİ" },
+      { coords: [41.034648546056, 28.941031178685158], city: "İSTANBUL", name: "ADİLE ŞAH KADIN HATİCE SULTAN TÜRBESİ" },
+      { coords: [41.03501696437339, 28.94365994166413], city: "İSTANBUL", name: "MOLLA AŞKI PARKI" },
+      { coords: [41.0345462592263, 28.94569587335503], city: "İSTANBUL", name: "FERRUH KETHÜDA CAMİİ" },
+      { coords: [41.03454018954371, 28.945317681907117], city: "İSTANBUL", name: "MAHMUT CELALETTİN ÖKTEN PARKI" },
+      { coords: [41.036298064134265, 28.945447392236233], city: "İSTANBUL", name: "MAHKEMEALTI PARKI" },
+      { coords: [41.03650442751758, 28.946611470877333], city: "İSTANBUL", name: "İBB BALAT PARKI" },
+      { coords: [41.03163060630428, 28.946402680362283], city: "İSTANBUL", name: "MERDİVENLİ YOKUŞ" },
+      { coords: [41.03798302067654, 28.955281629931854], city: "İSTANBUL", name: "AYNALIKAVAK KASRI" },
+      { coords: [41.03826134841355, 28.951170354386917], city: "İSTANBUL", name: "HANDAN AĞA CAMİİ" },
+      { coords: [41.02017726327576, 28.963208664074813], city: "İSTANBUL", name: "ÜÇ MİHRAPLI CAMİ" },
+      { coords: [41.01543555963799, 28.95031380030119], city: "İSTANBUL", name: "MAKİONOS SÜTUNU" },
+      { coords: [41.015959435677594, 28.955607915910253], city: "İSTANBUL", name: "BOZDOĞAN KEMERİ VALENS SU KEMERİ" },
+      { coords: [41.013679620295015, 28.96841590540285], city: "İSTANBUL", name: "VALİDE HANI MESCİDİ" },
+      { coords: [41.019238354707355, 28.9585782586068], city: "İSTANBUL", name: "ŞEBSEFA HATUN CAMİİ" },
+      { coords: [41.01893075191873, 28.957671672015344], city: "İSTANBUL", name: "ZAYREK YOKUŞU ÇEŞMESİ" },
+      { coords: [41.020050249107214, 28.958035913214594], city: "İSTANBUL", name: "M. EMİN TOKADİ TÜRBESİ" },
+      { coords: [41.019726852977215, 28.95719002598103], city: "İSTANBUL", name: "MOLLA ZEYREK CAMİİ" },
+      { coords: [41.00852306070028, 28.971255784161215], city: "İSTANBUL", name: "Çemberlitaş" },
+      { coords: [41.01103470073007, 28.971197813512756], city: "İSTANBUL", name: "Mahmut Paşa Camii" },
+      { coords: [41.00893185066804, 28.968717286009785], city: "İSTANBUL", name: "Sinan Paşa Medresesi" },
+      { coords: [41.00959496823241, 28.96873961392233], city: "İSTANBUL", name: "Hüseyin Ağa Camii" },
+      { coords: [41.01626547544853, 28.960203006858258], city: "İSTANBUL", name: "Molla Gürani Camii" },
+      { coords: [41.008688984898015, 28.941718563394797], city: "İSTANBUL", name: "Haseki Hürrem Sultan Camii" },
+      { coords: [41.012184331558075, 28.93115869469844], city: "İSTANBUL", name: "Has Odabaşı Behruz Ağa Camii" },
+      { coords: [41.01045195306486, 28.93447728957822], city: "İSTANBUL", name: "Hagios Mokios Sarnıcı" },
+      { coords: [41.008489365430314, 28.95552489904431], city: "İSTANBUL", name: "Bodrum Mesih Paşa Cami" },
+      { coords: [41.02205600331674, 28.941697570290064], city: "İSTANBUL", name: "Hırka-i Şerif Camii" },
     { coords: [41.01276347, 28.9648498], city: "İSTANBUL", name: "BEYAZIT KULESİ" },
     { coords: [41.01931468, 28.95031302], city: "İSTANBUL", name: "FATİH SULTAN MEHMET TÜRBESİ" },
     { coords: [41.01566868, 28.96446064], city: "İSTANBUL", name: "KANUNİ SULTAN SÜLEYMAN TÜRBESİ" },
@@ -1386,36 +1456,6 @@
       { coords: [39.90235384737348, 30.03351752431158], city: "BALIKESİR", name: "Grand Çalı Otel" },
     ];
 
-     // Şehir bilgileri ve linkleri
-    const cityLinks = {
-      "İSTANBUL": "https://tr.wikipedia.org/wiki/%C4%B0stanbul",
-      "EDİRNE": "https://tr.wikipedia.org/wiki/Edirne",
-      "KIRKLARELİ": "https://tr.wikipedia.org/wiki/K%C4%B1rklareli",
-      "TEKİRDAĞ": "https://tr.wikipedia.org/wiki/Tekirda%C4%9F",
-      "ÇANAKKALE": "https://tr.wikipedia.org/wiki/%C3%87anakkale",
-      "BALIKESİR": "https://tr.wikipedia.org/wiki/Bal%C4%B1kesir",
-      "BURSA": "https://tr.wikipedia.org/wiki/Bursa",
-      "YALOVA": "https://tr.wikipedia.org/wiki/Yalova",
-      "KOCAELİ": "https://tr.wikipedia.org/wiki/Kocaeli",
-      "SAKARYA": "https://tr.wikipedia.org/wiki/Sakarya",
-      "BİLECİK": "https://tr.wikipedia.org/wiki/Bilecik"
-    };
-
-    // Video bağlantıları
-    const videoLinks = {
-      "İSTANBUL": "https://drive.google.com/file/d/1HY18jKbOyIMlZVzRqvRCBqEyKcvYkUcQ/view",
-      "EDİRNE": "https://drive.google.com/file/d/1EVbFuSqnBgyltfgEUmhC8P9leeRAwRX5/view",
-      "KIRKLARELİ": "https://drive.google.com/file/d/15M63T96c097teZUlFCGGB0PkXB23tQpS/view",
-      "TEKİRDAĞ": "https://drive.google.com/file/d/1QclXblLpjpzv_FlpqK3SexbYIU3TVlbp/view",
-      "ÇANAKKALE": "https://drive.google.com/file/d/1h8yVbR0T9zIp8bwU8GyArm67eM0sHOoB/view",
-      "BALIKESİR": "https://drive.google.com/file/d/1cgzDC_VNx1EolmWGRU5Vq-0lZTE0fLDb/view",
-      "BURSA": "https://drive.google.com/file/d/1wujFXing9x8JF1Zcdzx9CBfp23btq8eK/view",
-      "YALOVA": "https://drive.google.com/file/d/1AYCUxjxQKJ7xHtTheuW8ota1z9z5KwXN/view",
-      "KOCAELİ": "https://drive.google.com/file/d/1Ppe3aX2QtVoFoQphY7Mwt-JgZdb1HCEI/view",
-      "SAKARYA": "https://drive.google.com/file/d/15ZXrVocySOJeE_Zxpz9WEhH9FRRVtGEX/view",
-      "BİLECİK": "https://drive.google.com/file/d/17kbnbQjWPHtqErny7QF7sHaWARAYu-qV/view?usp=sharing"
-    };
-
     function createPopupContent(name, city, lat, lng) {
       return `
         <strong>${name}</strong><br>
@@ -1466,10 +1506,49 @@
     }
     addMarkers();
 
-    let userLocationMarker = null;
-    let routingControl = null;
-    let routeTargetCoords = null;
-    let markedLocationMarker = null;
+    // Zoom 13+ olduğunda sadece görünür alan içindeki markerların isimlerini göster
+    let openTooltips = [];
+
+    function showLabels() {
+      closeLabels();
+      const bounds = map.getBounds();
+      [...greenSpacesMarkers, ...beachesMarkers, ...historicalMarkers, ...hotelsMarkers].forEach(marker => {
+        if (bounds.contains(marker.getLatLng())) {
+          const contentMatch = marker.getPopup().getContent().match(/<strong>(.*?)<\/strong>/);
+          const labelText = contentMatch ? contentMatch[1] : "";
+          const tooltip = L.tooltip({
+            permanent: true,
+            direction: 'top',
+            className: 'location-label',
+            offset: [0, -10]
+          })
+          .setContent(labelText)
+          .setLatLng(marker.getLatLng())
+          .addTo(map);
+          openTooltips.push(tooltip);
+        }
+      });
+    }
+
+    function closeLabels() {
+      openTooltips.forEach(tt => map.removeLayer(tt));
+      openTooltips = [];
+    }
+
+    function updateLabels() {
+      if (map.getZoom() >= 13) {
+        showLabels();
+      } else {
+        closeLabels();
+      }
+    }
+    map.on('zoomend', updateLabels);
+    map.on('moveend', updateLabels);
+
+    // Başlangıçta isimler kapalı
+    closeLabels();
+
+    // Filtre ve panel toggle fonksiyonları
 
     function applyFilters() {
       const selectedCity = document.getElementById("city-filter").value;
@@ -1493,6 +1572,19 @@
     }
 
     function showCityInfo(city) {
+      const cityLinks = {
+        "İSTANBUL": "https://tr.wikipedia.org/wiki/%C4%B0stanbul",
+        "EDİRNE": "https://tr.wikipedia.org/wiki/Edirne",
+        "KIRKLARELİ": "https://tr.wikipedia.org/wiki/K%C4%B1rklareli",
+        "TEKİRDAĞ": "https://tr.wikipedia.org/wiki/Tekirda%C4%9F",
+        "ÇANAKKALE": "https://tr.wikipedia.org/wiki/%C3%87anakkale",
+        "BALIKESİR": "https://tr.wikipedia.org/wiki/Bal%C4%B1kesir",
+        "BURSA": "https://tr.wikipedia.org/wiki/Bursa",
+        "YALOVA": "https://tr.wikipedia.org/wiki/Yalova",
+        "KOCAELİ": "https://tr.wikipedia.org/wiki/Kocaeli",
+        "SAKARYA": "https://tr.wikipedia.org/wiki/Sakarya",
+        "BİLECİK": "https://tr.wikipedia.org/wiki/Bilecik"
+      };
       const url = cityLinks[city];
       if (url) {
         window.open(url, '_blank');
@@ -1500,7 +1592,21 @@
         alert(city + " için bilgi bulunamadı.");
       }
     }
+
     function openVideo(city) {
+      const videoLinks = {
+        "İSTANBUL": "https://drive.google.com/file/d/1HY18jKbOyIMlZVzRqvRCBqEyKcvYkUcQ/view",
+        "EDİRNE": "https://drive.google.com/file/d/1EVbFuSqnBgyltfgEUmhC8P9leeRAwRX5/view",
+        "KIRKLARELİ": "https://drive.google.com/file/d/15M63T96c097teZUlFCGGB0PkXB23tQpS/view",
+        "TEKİRDAĞ": "https://drive.google.com/file/d/1QclXblLpjpzv_FlpqK3SexbYIU3TVlbp/view",
+        "ÇANAKKALE": "https://drive.google.com/file/d/1h8yVbR0T9zIp8bwU8GyArm67eM0sHOoB/view",
+        "BALIKESİR": "https://drive.google.com/file/d/1cgzDC_VNx1EolmWGRU5Vq-0lZTE0fLDb/view",
+        "BURSA": "https://drive.google.com/file/d/1wujFXing9x8JF1Zcdzx9CBfp23btq8eK/view",
+        "YALOVA": "https://drive.google.com/file/d/1AYCUxjxQKJ7xHtTheuW8ota1z9z5KwXN/view",
+        "KOCAELİ": "https://drive.google.com/file/d/1Ppe3aX2QtVoFoQphY7Mwt-JgZdb1HCEI/view",
+        "SAKARYA": "https://drive.google.com/file/d/15ZXrVocySOJeE_Zxpz9WEhH9FRRVtGEX/view",
+        "BİLECİK": "https://drive.google.com/file/d/17kbnbQjWPHtqErny7QF7sHaWARAYu-qV/view?usp=sharing"
+      };
       const videoUrl = videoLinks[city];
       if (videoUrl) {
         window.open(videoUrl, '_blank');
@@ -1508,10 +1614,16 @@
         alert(city + " için video bulunamadı.");
       }
     }
+
     function openGoogleMaps(lat, lng) {
       const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
       window.open(url, "_blank");
     }
+
+    let userLocationMarker = null;
+    let routingControl = null;
+    let routeTargetCoords = null;
+    let markedLocationMarker = null;
 
     function drawRoute(destLat, destLng) {
       let startLatLng = null;
@@ -1601,7 +1713,7 @@
 
     function adjustMapBounds() {
       let topOffset = filterPanel.classList.contains("open") ? 140 : 0;
-      let bottomOffset = locationPanel.classList.contains("open") ? 180 : 0;
+      let bottomOffset = locationPanel.classList.contains("open") ? 320 : 0;
       map.getContainer().style.top = topOffset + "px";
       map.getContainer().style.bottom = bottomOffset + "px";
       map.invalidateSize();
@@ -1714,7 +1826,6 @@
       window.open(url, "_blank");
     });
 
-    // Konum İşaretle Özelliği
     let markMode = false;
 
     document.getElementById("mark-location-button").addEventListener("click", () => {
@@ -1744,9 +1855,5 @@
     applyFilters();
     adjustMapBounds();
   </script>
-</body>
-</html>
-<!-- partial -->
-  
 </body>
 </html>
